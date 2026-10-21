@@ -1,0 +1,31 @@
+name: Build Owner APK
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Generate Android project
+        working-directory: owner_app
+        run: |
+          cp pubspec.yaml /tmp/pubspec.yaml && cp -r lib /tmp/lib
+          flutter create --platforms=android --org com.onyx --project-name owner_app .
+          cp /tmp/pubspec.yaml pubspec.yaml && rm -rf lib test && cp -r /tmp/lib lib
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle* || true
+          sed -i 's/android:label="owner_app"/android:label="ONYX Owner"/' android/app/src/main/AndroidManifest.xml
+      - name: Build
+        working-directory: owner_app
+        run: |
+          flutter pub get
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onyx-owner-apk
+          path: owner_app/build/app/outputs/flutter-apk/app-release.apk
