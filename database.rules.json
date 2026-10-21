@@ -1,0 +1,160 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "admins": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+
+    "appConfig": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "announcements": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "subjects": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "questions": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".indexOn": ["subject"]
+    },
+
+    "users": {
+      "$uid": {
+        "profile": {
+          ".read": "auth != null",
+          ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "private": {
+          ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "settings": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+
+    "usernames": {
+      "$k": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))",
+        ".validate": "$k.matches(/^[a-z0-9_.]{3,20}$/)"
+      }
+    },
+    "emails": {
+      "$k": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))"
+      }
+    },
+    "phones": {
+      "$k": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))"
+      }
+    },
+
+    "requests": {
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$from": {
+          ".write": "auth != null && (auth.uid === $from || auth.uid === $to)"
+        }
+      }
+    },
+    "sentRequests": {
+      "$from": {
+        ".read": "auth != null && auth.uid === $from",
+        "$to": {
+          ".write": "auth != null && (auth.uid === $from || auth.uid === $to)"
+        }
+      }
+    },
+    "friends": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('friends').child(auth.uid).child($uid).exists())",
+        "$fid": {
+          ".write": "auth != null && (auth.uid === $uid || (auth.uid === $fid && root.child('requests').child(auth.uid).child($uid).exists()))"
+        }
+      }
+    },
+
+    "chatMembers": {
+      "$chatId": {
+        ".read": "auth != null && data.child(auth.uid).exists()",
+        ".write": "auth != null && (!data.exists() || data.child(auth.uid).exists())"
+      }
+    },
+    "chatMeta": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chatMembers').child($chatId).child(auth.uid).exists()",
+        ".write": "auth != null && (!data.exists() || root.child('chatMembers').child($chatId).child(auth.uid).exists())"
+      }
+    },
+    "messages": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chatMembers').child($chatId).child(auth.uid).exists()",
+        "$msgId": {
+          ".write": "auth != null && root.child('chatMembers').child($chatId).child(auth.uid).exists() && (!data.exists() ? newData.child('from').val() === auth.uid : true)"
+        }
+      }
+    },
+    "userChats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$chatId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('chatMembers').child($chatId).child(auth.uid).exists())"
+        }
+      }
+    },
+
+    "posts": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (newData.child('uid').val() === auth.uid || data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+        "likes": { "$u": { ".write": "auth != null && auth.uid === $u" } },
+        "comments": { "$c": { ".write": "auth != null" } }
+      }
+    },
+    "reels": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (newData.child('uid').val() === auth.uid || data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+        "likes": { "$u": { ".write": "auth != null && auth.uid === $u" } }
+      }
+    },
+    "stories": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
+
+    "results": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "leaderboard": {
+      ".read": "auth != null",
+      "$uid": { ".write": "auth != null && auth.uid === $uid" }
+    },
+    "feedback": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$id": { ".write": "auth != null && !data.exists()" }
+    },
+    "reports": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$id": { ".write": "auth != null && !data.exists()" }
+    }
+  }
+}
