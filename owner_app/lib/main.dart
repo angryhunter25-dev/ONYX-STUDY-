@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'firebase_options.dart';
+import 'import_page.dart';
 
 final db = FirebaseDatabase.instance;
 
@@ -275,6 +276,7 @@ class SubjectsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         floatingActionButton: FloatingActionButton(
+            heroTag: null,
             onPressed: () => add(context), child: const Icon(Icons.add)),
         body: Live(
           path: 'subjects',
@@ -310,10 +312,25 @@ class _QuestionsTabState extends State<QuestionsTab> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const QuestionEditor())),
-          child: const Icon(Icons.add),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.extended(
+              heroTag: null,
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ImportPage())),
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Import'),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton(
+              heroTag: null,
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const QuestionEditor())),
+              child: const Icon(Icons.add),
+            ),
+          ],
         ),
         body: Column(children: [
           Live(
@@ -527,6 +544,7 @@ class NoticeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         floatingActionButton: FloatingActionButton(
+            heroTag: null,
             onPressed: () => add(context), child: const Icon(Icons.add)),
         body: Live(
           path: 'announcements',
