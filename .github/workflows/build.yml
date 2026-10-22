@@ -1,14 +1,11 @@
 name: Build APK
-
 on:
 push:
 branches: [main]
 workflow_dispatch:
-
 jobs:
 build:
 runs-on: ubuntu-latest
-
 steps:
   - name: Checkout
     uses: actions/checkout@v4
@@ -106,3 +103,4 @@ steps:
       path: ${{ env.APK_PATH }}
       if-no-files-found: error
       retention-days: 7
+      
