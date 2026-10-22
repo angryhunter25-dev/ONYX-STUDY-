@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'announcements_page.dart';
 import 'quiz_screen.dart';
+import 'voice_rooms_page.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -39,6 +40,20 @@ class HomeTab extends StatelessWidget {
             const SizedBox(height: 4),
             const Text('Pick a subject and start practising MCQs'),
             const SizedBox(height: 16),
+            Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: const CircleAvatar(child: Icon(Icons.mic)),
+                title: const Text('Voice Rooms',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Live 8-seat voice rooms'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const VoiceRoomsPage())),
+              ),
+            ),
             for (final e in items)
               Card(
                 margin: const EdgeInsets.only(bottom: 12),
