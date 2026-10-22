@@ -1,106 +1,135 @@
 name: Build APK
 
 on:
-push:
-branches:
-- main
-workflow_dispatch:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  - name: Setup Java
-    uses: actions/setup-java@v4
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Prepare user_app (unzip if uploaded as zip)
+        run: |
+          ZIP=$(ls user_app.zip *user_app*.zip 2>/dev/null | head -1 || true)
+          if [ -n "$ZIP" ]; then
+            echo "Found zip: $ZIP"
+            rm -rf /tmp/z && mkdir -p /tmp/z
+            unzip -q "$ZIP" -d /tmp/z
+            if [ -d /tmp/z/user_app ]; then
+              rm -rf user_app
+              mv /tmp/z/user_app user_app
+            elif [ -f /tmp/z/pubspec.yaml ]; then
+              rm -rf user_app
+              mkdir user_app
+              cp -r /tmp/z/. user_app/
+            else
+              echo "ERROR: zip ke andar user_app folder ya pubspec.yaml nahi mila"
+              find /tmp/z -maxdepth 2
+              exit 1
+            fi
+          fi
+          if [ ! -f user_app/pubspec.yaml ]; then
+            echo "ERROR: user_app/pubspec.yaml nahi mila. Repo ka root:"
+            ls -la
+            exit 1
+          fi
 
-  - name: Setup Flutter
-    uses: subosito/flutter-action@v2
-    with:
-      channel: stable
-      cache: true
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Generate Android project
-    working-directory: user_app
-    run: |
-      cp pubspec.yaml /tmp/pubspec.yaml
-      cp -r lib /tmp/lib
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
-      flutter create --platforms=android --org com.onyx --project-name user_app .
+      - name: Generate Android project
+        working-directory: user_app
+        run: |
+          cp pubspec.yaml /tmp/pubspec.yaml
+          cp -r lib /tmp/lib
+          cp -r assets /tmp/assets
 
-      cp /tmp/pubspec.yaml pubspec.yaml
-      rm -rf lib test
-      cp -r /tmp/lib lib
+          flutter create --platforms=android --org com.onyx --project-name user_app .
 
-      sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle || true
-      sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts || true
+          cp /tmp/pubspec.yaml pubspec.yaml
+          rm -rf lib test
+          cp -r /tmp/lib lib
+          mkdir -p assets
+          cp -r /tmp/assets/. assets/
 
-      sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.BLUETOOTH"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle || true
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts || true
 
-      sed -i 's#android:label="[^"]*"#android:label="ONYX"#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.BLUETOOTH"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n    <application#' android/app/src/main/AndroidManifest.xml
 
-      sed -i '/org.gradle.jvmargs/d' android/gradle.properties
-      echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
-      echo "android.enableR8.fullMode=false" >> android/gradle.properties
+          sed -i 's#android:label="[^"]*"#android:label="ONYX"#' android/app/src/main/AndroidManifest.xml
 
-  - name: Configure signing key
-    env:
-      KS: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
-    run: |
-      mkdir -p ~/.android
+          sed -i '/org.gradle.jvmargs/d' android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+          echo "android.enableR8.fullMode=false" >> android/gradle.properties
 
-      if [ -n "$KS" ]; then
-        echo "$KS" | base64 -d > ~/.android/debug.keystore
-      fi
+      - name: Configure signing key
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p ~/.android
 
-      if [ ! -f ~/.android/debug.keystore ]; then
-        keytool -genkeypair -v \
-          -keystore ~/.android/debug.keystore \
-          -storepass android \
-          -alias androiddebugkey \
-          -keypass android \
-          -keyalg RSA \
-          -keysize 2048 \
-          -validity 10000 \
-          -dname "CN=Android Debug,O=Android,C=US"
-      fi
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > ~/.android/debug.keystore
+          fi
 
-      keytool -list -v \
-        -keystore ~/.android/debug.keystore \
-        -alias androiddebugkey \
-        -storepass android \
-        -keypass android 2>/dev/null | grep -E "SHA1|SHA256" || true
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
 
-  - name: Build APK
-    working-directory: user_app
-    run: |
-      set -o pipefail
-      flutter pub get
-      dart run flutter_launcher_icons
-      flutter build apk --release --no-shrink --no-tree-shake-icons 2>&1 | tee /tmp/build.log
+          keytool -list -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android 2>/dev/null | grep -E "SHA1|SHA256" || true
 
-  - name: Verify APK
-    run: |
-      APK="user_app/build/app/outputs/flutter-apk/app-release.apk"
+      - name: Build APK
+        working-directory: user_app
+        run: |
+          set -o pipefail
+          flutter pub get
+          dart run flutter_launcher_icons
+          flutter build apk --release --no-shrink --no-tree-shake-icons 2>&1 | tee /tmp/build.log
 
-      if [ ! -f "$APK" ]; then
-        echo "ERROR: APK file not found!"
-        find user_app/build -type f -name "*.apk" -print
-        exit 1
-      fi
+      - name: Verify APK
+        run: |
+          APK="user_app/build/app/outputs/flutter-apk/app-release.apk"
 
-      ls -lh "$APK"
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK file not found!"
+            find user_app/build -type f -name "*.apk" -print
+            exit 1
+          fi
 
-  - name: Upload APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: onyx-user-apk
-      path: user_app/build/app/outputs/flutter-apk/app-release.apk
-      if-no-files-found: error
-      retention-days: 7
+          ls -lh "$APK"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: onyx-user-apk
+          path: user_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
