@@ -1,15 +1,19 @@
 name: Build APK
+
 on:
 push:
 branches:
 - main
 workflow_dispatch:
+
 jobs:
 build:
 runs-on: ubuntu-latest
+
 steps:
-- name: Checkout
-uses: actions/checkout@v4
+  - name: Checkout
+    uses: actions/checkout@v4
+
   - name: Setup Java
     uses: actions/setup-java@v4
     with:
@@ -27,14 +31,20 @@ uses: actions/checkout@v4
     run: |
       cp pubspec.yaml /tmp/pubspec.yaml
       cp -r lib /tmp/lib
+
       flutter create --platforms=android --org com.onyx --project-name user_app .
+
       cp /tmp/pubspec.yaml pubspec.yaml
       rm -rf lib test
       cp -r /tmp/lib lib
+
       sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle || true
       sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts || true
+
       sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.BLUETOOTH"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+
       sed -i 's#android:label="[^"]*"#android:label="ONYX"#' android/app/src/main/AndroidManifest.xml
+
       sed -i '/org.gradle.jvmargs/d' android/gradle.properties
       echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
       echo "android.enableR8.fullMode=false" >> android/gradle.properties
@@ -44,12 +54,28 @@ uses: actions/checkout@v4
       KS: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
     run: |
       mkdir -p ~/.android
+
       if [ -n "$KS" ]; then
         echo "$KS" | base64 -d > ~/.android/debug.keystore
       fi
+
       if [ ! -f ~/.android/debug.keystore ]; then
-        keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+        keytool -genkeypair -v \
+          -keystore ~/.android/debug.keystore \
+          -storepass android \
+          -alias androiddebugkey \
+          -keypass android \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -dname "CN=Android Debug,O=Android,C=US"
       fi
+
+      keytool -list -v \
+        -keystore ~/.android/debug.keystore \
+        -alias androiddebugkey \
+        -storepass android \
+        -keypass android 2>/dev/null | grep -E "SHA1|SHA256" || true
 
   - name: Build APK
     working-directory: user_app
@@ -59,10 +85,17 @@ uses: actions/checkout@v4
       dart run flutter_launcher_icons
       flutter build apk --release --no-shrink --no-tree-shake-icons 2>&1 | tee /tmp/build.log
 
-  - name: Find APK
+  - name: Verify APK
     run: |
-      find user_app/build -type f -name "*.apk" -print
-      test -f user_app/build/app/outputs/flutter-apk/app-release.apk
+      APK="user_app/build/app/outputs/flutter-apk/app-release.apk"
+
+      if [ ! -f "$APK" ]; then
+        echo "ERROR: APK file not found!"
+        find user_app/build -type f -name "*.apk" -print
+        exit 1
+      fi
+
+      ls -lh "$APK"
 
   - name: Upload APK
     uses: actions/upload-artifact@v4
@@ -71,4 +104,3 @@ uses: actions/checkout@v4
       path: user_app/build/app/outputs/flutter-apk/app-release.apk
       if-no-files-found: error
       retention-days: 7
-
