@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'app_state.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -98,7 +99,7 @@ class _QuizScreenState extends State<QuizScreen> {
       picked = i;
       if (ok) score++;
     });
-    HapticFeedback.mediumImpact();
+    if (vibrationOn) HapticFeedback.mediumImpact();
     try {
       await player.stop();
       await player.play(AssetSource(ok ? 'sounds/correct.wav' : 'sounds/wrong.wav'));

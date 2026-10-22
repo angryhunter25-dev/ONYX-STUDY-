@@ -2,8 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
+import 'add_tab.dart';
+import 'chats_tab.dart';
 import 'home_tab.dart';
+import 'profile_tab.dart';
 import 'select_class.dart';
+import 'settings_tab.dart';
 
 /// Placeholder shell with the bottom navigation bar. Real screens come next.
 class HomeShell extends StatefulWidget {
@@ -40,13 +44,10 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const HomeTab(),
-      const Center(child: Text('Chats (next)')),
-      const Center(child: Text('Add friend (next)')),
-      Center(
-        child: ElevatedButton(
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            child: const Text('Sign out')),
-      ),
+      const ChatsTab(),
+      const AddTab(),
+      ProfilePage(uid: FirebaseAuth.instance.currentUser!.uid, tab: true),
+      const SettingsTab(),
     ];
     return Scaffold(
       body: SafeArea(child: pages[i]),
@@ -58,6 +59,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
           NavigationDestination(icon: Icon(Icons.person_add_alt), label: 'Add'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'More'),
         ],
       ),
     );

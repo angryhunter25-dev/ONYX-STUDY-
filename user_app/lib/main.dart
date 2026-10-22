@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
+import 'app_state.dart';
 import 'firebase_options.dart';
 import 'home_shell.dart';
 import 'login_screen.dart';
@@ -13,6 +14,7 @@ import 'welcome_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: firebaseOptions);
+  await loadSettings();
   runApp(const OnyxApp());
 }
 

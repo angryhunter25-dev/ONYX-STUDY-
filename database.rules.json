@@ -2,11 +2,9 @@
   "rules": {
     ".read": false,
     ".write": false,
-
     "admins": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true"
     },
-
     "appConfig": {
       ".read": true,
       ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
@@ -22,9 +20,10 @@
     "questions": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
-      ".indexOn": ["subject"]
+      ".indexOn": [
+        "subject"
+      ]
     },
-
     "users": {
       "$uid": {
         "profile": {
@@ -41,7 +40,6 @@
         }
       }
     },
-
     "usernames": {
       "$k": {
         ".read": "auth != null",
@@ -61,7 +59,6 @@
         ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))"
       }
     },
-
     "requests": {
       "$to": {
         ".read": "auth != null && auth.uid === $to",
@@ -86,7 +83,6 @@
         }
       }
     },
-
     "chatMembers": {
       "$chatId": {
         ".read": "auth != null && data.child(auth.uid).exists()",
@@ -115,29 +111,52 @@
         }
       }
     },
-
     "posts": {
       ".read": "auth != null",
       "$id": {
         ".write": "auth != null && (newData.child('uid').val() === auth.uid || data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
-        "likes": { "$u": { ".write": "auth != null && auth.uid === $u" } },
-        "comments": { "$c": { ".write": "auth != null" } }
-      }
+        "likes": {
+          "$u": {
+            ".write": "auth != null && auth.uid === $u"
+          }
+        },
+        "comments": {
+          "$c": {
+            ".write": "auth != null"
+          }
+        }
+      },
+      ".indexOn": [
+        "uid"
+      ]
     },
     "reels": {
       ".read": "auth != null",
       "$id": {
         ".write": "auth != null && (newData.child('uid').val() === auth.uid || data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
-        "likes": { "$u": { ".write": "auth != null && auth.uid === $u" } }
-      }
+        "likes": {
+          "$u": {
+            ".write": "auth != null && auth.uid === $u"
+          }
+        }
+      },
+      ".indexOn": [
+        "uid"
+      ]
     },
     "stories": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)"
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
+        "$sid": {
+          "viewers": {
+            "$v": {
+              ".write": "auth != null && auth.uid === $v"
+            }
+          }
+        }
       }
     },
-
     "results": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
@@ -146,15 +165,25 @@
     },
     "leaderboard": {
       ".read": "auth != null",
-      "$uid": { ".write": "auth != null && auth.uid === $uid" }
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid"
+      }
     },
     "feedback": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
-      "$id": { ".write": "auth != null && !data.exists()" }
+      "$id": {
+        ".write": "auth != null && !data.exists()"
+      }
     },
     "reports": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
-      "$id": { ".write": "auth != null && !data.exists()" }
+      "$id": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+    "onyxChat": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
     }
   }
 }

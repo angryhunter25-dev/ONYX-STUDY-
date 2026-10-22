@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'firebase_options.dart';
 
@@ -214,7 +217,7 @@ class _HomeState extends State<Home> {
   int i = 0;
   @override
   Widget build(BuildContext context) {
-    const tabs = [SubjectsTab(), QuestionsTab(), NoticeTab(), ThemeTab()];
+    const tabs = [SubjectsTab(), QuestionsTab(), NoticeTab(), OnyxChatTab(), ThemeTab()];
     return Scaffold(
       appBar: AppBar(title: const Text('ONYX Owner'), actions: [
         IconButton(
@@ -229,6 +232,7 @@ class _HomeState extends State<Home> {
           NavigationDestination(icon: Icon(Icons.menu_book), label: 'Subjects'),
           NavigationDestination(icon: Icon(Icons.quiz), label: 'Questions'),
           NavigationDestination(icon: Icon(Icons.campaign), label: 'Notices'),
+          NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
           NavigationDestination(icon: Icon(Icons.palette), label: 'Theme'),
         ],
       ),
@@ -632,4 +636,129 @@ class _ThemeTabState extends State<ThemeTab> {
           FilledButton(onPressed: save, child: const Text('Save theme')),
         ],
       );
+}
+
+// ---------------- ONYX official chat ----------------
+class OnyxChatTab extends StatefulWidget {
+  const OnyxChatTab({super.key});
+  @override
+  State<OnyxChatTab> createState() => _OnyxChatTabState();
+}
+
+class _OnyxChatTabState extends State<OnyxChatTab> {
+  final text = TextEditingController();
+
+  Future<void> send({String? img}) async {
+    final t = text.text.trim();
+    if (img == null && t.isEmpty) return;
+    text.clear();
+    try {
+      await db.ref('onyxChat').push().set(
+          {'text': t, 'img': img ?? '', 'ts': ServerValue.timestamp});
+    } catch (e) {
+      if (mounted) toast(context, 'Error: $e');
+    }
+  }
+
+  Future<void> photo() async {
+    final f = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, maxWidth: 900, imageQuality: 60);
+    if (f == null) return;
+    await send(img: base64Encode(await f.readAsBytes()));
+  }
+
+  String hhmm(dynamic ts) {
+    if (ts is! num) return '';
+    final d = DateTime.fromMillisecondsSinceEpoch(ts.toInt());
+    return '${d.day}/${d.month} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+        const Padding(
+          padding: EdgeInsets.all(10),
+          child: Text('Yahan likha message sabhi users ke ONYX chat me jayega',
+              style: TextStyle(color: Colors.grey)),
+        ),
+        Expanded(
+          child: StreamBuilder<DatabaseEvent>(
+            stream: db.ref('onyxChat').limitToLast(200).onValue,
+            builder: (c, s) {
+              if (s.hasError) return Center(child: Text('Error: ${s.error}'));
+              final v = s.data?.snapshot.value;
+              if (v is! Map || v.isEmpty) {
+                return const Center(child: Text('Koi message nahi'));
+              }
+              final list = v.entries.where((e) => e.value is Map).toList()
+                ..sort((a, b) => '${b.key}'.compareTo('${a.key}'));
+              return ListView.builder(
+                reverse: true,
+                itemCount: list.length,
+                itemBuilder: (c, i) {
+                  final m = list[i].value as Map;
+                  final img = '${m['img'] ?? ''}';
+                  final t = '${m['text'] ?? ''}';
+                  return Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onLongPress: () async {
+                        if (await confirm(c, 'Delete message?')) {
+                          db.ref('onyxChat/${list[i].key}').remove();
+                        }
+                      },
+                      child: Container(
+                        constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.8),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(14)),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (img.isNotEmpty)
+                                ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: ConstrainedBox(
+                                        constraints:
+                                            const BoxConstraints(maxHeight: 260),
+                                        child: Image.memory(base64Decode(img),
+                                            fit: BoxFit.contain))),
+                              if (t.isNotEmpty) Text(t),
+                              Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(hhmm(m['ts']),
+                                      style: const TextStyle(
+                                          fontSize: 10, color: Colors.grey))),
+                            ]),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+          child: Row(children: [
+            IconButton(onPressed: photo, icon: const Icon(Icons.image_outlined)),
+            Expanded(
+                child: TextField(
+              controller: text,
+              minLines: 1,
+              maxLines: 5,
+              decoration: InputDecoration(
+                  hintText: 'ONYX message',
+                  isDense: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24))),
+            )),
+            IconButton(onPressed: send, icon: const Icon(Icons.send)),
+          ]),
+        ),
+      ]);
 }
