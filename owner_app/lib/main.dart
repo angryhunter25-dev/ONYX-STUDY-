@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'firebase_options.dart';
 import 'import_page.dart';
+import 'users_page.dart';
 
 final db = FirebaseDatabase.instance;
 
@@ -221,6 +222,11 @@ class _HomeState extends State<Home> {
     const tabs = [SubjectsTab(), QuestionsTab(), NoticeTab(), OnyxChatTab(), ThemeTab()];
     return Scaffold(
       appBar: AppBar(title: const Text('ONYX Owner'), actions: [
+        IconButton(
+            tooltip: 'Users',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const UsersPage())),
+            icon: const Icon(Icons.people)),
         IconButton(
             onPressed: () => FirebaseAuth.instance.signOut(),
             icon: const Icon(Icons.logout))

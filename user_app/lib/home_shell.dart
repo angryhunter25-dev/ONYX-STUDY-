@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'add_tab.dart';
 import 'chats_tab.dart';
 import 'home_tab.dart';
+import 'presence.dart';
 import 'profile_tab.dart';
 import 'select_class.dart';
 import 'settings_tab.dart';
@@ -22,7 +23,14 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    Presence.start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkClass());
+  }
+
+  @override
+  void dispose() {
+    Presence.stop();
+    super.dispose();
   }
 
   Future<void> _checkClass() async {
