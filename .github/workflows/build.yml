@@ -26,8 +26,12 @@ jobs:
           cp /tmp/pubspec.yaml pubspec.yaml && rm -rf lib test && cp -r /tmp/lib lib
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle || true
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts || true
-          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.BLUETOOTH"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n    <application#' android/app/src/main/AndroidManifest.xml
           sed -i 's#android:label="[^"]*"#android:label="ONYX"#' android/app/src/main/AndroidManifest.xml
+          # Gradle ko zyada memory do (Agora bhaari hai)
+          sed -i '/org.gradle.jvmargs/d' android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+          echo "android.enableR8.fullMode=false" >> android/gradle.properties
 
       - name: Fixed signing key (keeps SHA-1 stable for phone OTP)
         env:
@@ -43,7 +47,7 @@ jobs:
         run: |
           flutter pub get
           dart run flutter_launcher_icons
-          flutter build apk --release
+          flutter build apk --release --no-shrink --no-tree-shake-icons 2>&1 | tee /tmp/build.log || { echo "=== REAL ERROR ==="; grep -n -B2 -A12 "What went wrong\|FAILURE\|error:" /tmp/build.log | head -80; exit 1; }
 
       - name: Print signing SHA (for Firebase)
         run: keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep -E "SHA1|SHA256" || true
