@@ -1,6 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
+import 'announcements_page.dart';
 import 'quiz_screen.dart';
 
 class HomeTab extends StatelessWidget {
@@ -28,8 +29,13 @@ class HomeTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('Subjects',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+            const Row(children: [
+              Expanded(
+                  child: Text('Subjects',
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.w700))),
+              AnnouncementBell(),
+            ]),
             const SizedBox(height: 4),
             const Text('Pick a subject and start practising MCQs'),
             const SizedBox(height: 16),
