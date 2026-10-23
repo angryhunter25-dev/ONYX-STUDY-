@@ -1,0 +1,92 @@
+name: Build User APK
+on: workflow_dispatch
+
+permissions:
+  contents: write   # needed to publish the APK as a GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Same signing key on every build, otherwise Android refuses to install an
+      # update over the old app ("App not installed"). See README_SETUP.md.
+      - name: Restore signing key
+        env:
+          KS: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > ~/.android/debug.keystore
+            echo "Using permanent signing key"
+          else
+            echo "::warning::KEYSTORE_BASE64 secret missing - APK gets a random key, so users cannot update over an old install"
+          fi
+
+      - name: Build number
+        run: echo "BN=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+
+      - name: Generate Android project
+        working-directory: user_app
+        run: |
+          cp pubspec.yaml /tmp/pubspec.yaml && cp -r lib /tmp/lib
+          flutter create --platforms=android --org com.onyx --project-name user_app .
+          cp /tmp/pubspec.yaml pubspec.yaml && rm -rf lib test && cp -r /tmp/lib lib
+
+          # --- Android settings ---
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle || true
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts || true
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <application android:usesCleartextTraffic="true"#' $M
+          sed -i 's#android:label="[^"]*"#android:label="ONYX"#' $M
+          sed -i 's#</application>#    <activity android:name=".RoomActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout" android:windowSoftInputMode="adjustResize" android:theme="@android:style/Theme.DeviceDefault.NoActionBar"/>\n    </application>#' $M
+
+          # --- Voice room (native screen + web UI) ---
+          find android/app/src/main -name 'MainActivity.*' -delete
+          PKG=android/app/src/main/kotlin/com/onyx/user_app
+          mkdir -p $PKG android/app/src/main/assets
+          cp native/MainActivity.kt native/RoomActivity.kt $PKG/
+          cp native/app.html native/login.mp3 android/app/src/main/assets/
+          if [ -f android/app/build.gradle.kts ]; then
+            printf '\ndependencies {\n    implementation("androidx.webkit:webkit:1.11.0")\n}\n' >> android/app/build.gradle.kts
+          else
+            printf "\ndependencies {\n    implementation 'androidx.webkit:webkit:1.11.0'\n}\n" >> android/app/build.gradle
+          fi
+
+      - name: Build
+        working-directory: user_app
+        run: |
+          flutter pub get
+          if [ -f assets/icon.png ]; then dart run flutter_launcher_icons || true; fi
+          flutter build apk --release --build-number=$BN --build-name=1.0.$BN
+
+      - name: Publish APK (GitHub Release)
+        working-directory: user_app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk onyx-user.apk
+          gh release create "v$BN" onyx-user.apk --repo "$GITHUB_REPOSITORY" \
+            --title "ONYX build $BN" --notes "ONYX user app build $BN"
+          {
+            echo "## Update ready"
+            echo ""
+            echo "Owner app > (top bar) App update me ye daalo:"
+            echo ""
+            echo "- **Version code:** \`$BN\`"
+            echo "- **APK link:** https://github.com/$GITHUB_REPOSITORY/releases/download/v$BN/onyx-user.apk"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onyx-user-apk
+          path: user_app/build/app/outputs/flutter-apk/app-release.apk
