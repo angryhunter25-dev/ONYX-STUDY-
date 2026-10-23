@@ -63,7 +63,7 @@ jobs:
           fi
 
       # Old plugins (e.g. agora_rtc_engine) compile against Android 31 but need 34+.
-      # This Gradle init script raises compileSdk for every plugin module.
+      # This Gradle init script raises compileSdk to 36 for every plugin module below 36.
       - name: Fix old plugins compileSdk
         run: |
           mkdir -p ~/.gradle/init.d
@@ -72,7 +72,11 @@ jobs:
               afterEvaluate { p ->
                   if (p.name != 'app' && p.hasProperty('android')) {
                       try {
-                          p.android { compileSdkVersion 35 }
+                          def cur = p.android.compileSdkVersion?.toString() ?: ''
+                          def digits = cur.replaceAll('[^0-9]', '')
+                          if (digits != '' && digits.toInteger() < 36) {
+                              p.android { compileSdkVersion 36 }
+                          }
                       } catch (Throwable t) {
                           println "compileSdk patch skipped for ${p.name}: ${t.message}"
                       }
