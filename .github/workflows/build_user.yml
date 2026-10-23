@@ -62,6 +62,25 @@ jobs:
             printf "\ndependencies {\n    implementation 'androidx.webkit:webkit:1.11.0'\n}\n" >> android/app/build.gradle
           fi
 
+      # Old plugins (e.g. agora_rtc_engine) compile against Android 31 but need 34+.
+      # This Gradle init script raises compileSdk for every plugin module.
+      - name: Fix old plugins compileSdk
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/fix-sdk.gradle <<'GRADLE'
+          allprojects {
+              afterEvaluate { p ->
+                  if (p.name != 'app' && p.hasProperty('android')) {
+                      try {
+                          p.android { compileSdkVersion 35 }
+                      } catch (Throwable t) {
+                          println "compileSdk patch skipped for ${p.name}: ${t.message}"
+                      }
+                  }
+              }
+          }
+          GRADLE
+
       - name: Build
         working-directory: user_app
         run: |
