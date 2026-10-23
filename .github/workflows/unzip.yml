@@ -1,0 +1,31 @@
+name: Unzip Files
+on:
+  workflow_dispatch:
+    inputs:
+      zipname:
+        description: "Repo me upload ki hui zip ka naam"
+        default: "app_files.zip"
+
+permissions:
+  contents: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip into repo
+        run: |
+          if [ ! -f "${{ inputs.zipname }}" ]; then
+            echo "::error::${{ inputs.zipname }} repo ke main folder me nahi mili"
+            exit 1
+          fi
+          unzip -o "${{ inputs.zipname }}" -x ".github/*" "__MACOSX/*"
+          rm "${{ inputs.zipname }}"
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Unzip ${{ inputs.zipname }}" || echo "Kuch change nahi"
+          git push
