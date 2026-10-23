@@ -19,6 +19,8 @@ dependencies:
   video_player: ^2.9.2
   firebase_storage: ^12.3.4
   package_info_plus: ^8.0.2
+  agora_rtc_engine: ^6.5.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.1
