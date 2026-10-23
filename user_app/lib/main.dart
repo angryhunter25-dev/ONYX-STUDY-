@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'home_shell.dart';
 import 'login_screen.dart';
 import 'theme.dart';
+import 'update_gate.dart';
 import 'username_screen.dart';
 import 'welcome_screen.dart';
 
@@ -27,7 +28,7 @@ class OnyxApp extends StatelessWidget {
         title: 'ONYX',
         debugShowCheckedModeBanner: false,
         theme: theme,
-        home: const AuthGate(),
+        home: const UpdateGate(child: AuthGate()),
       ),
     );
   }

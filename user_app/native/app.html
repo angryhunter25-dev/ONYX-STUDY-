@@ -1,0 +1,389 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Our Room</title>
+<style>
+:root{--bg:#fff0f6;--card:#fff;--tx:#3a1020;--ac:#ec4899;--mut:#a05575}
+body.dark{--bg:#2a0a1a;--card:#4a1230;--tx:#ffeef5;--mut:#e8a3c0}
+#hearts{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;pointer-events:none;z-index:-1}
+#hearts i{position:absolute;bottom:-40px;font-style:normal;opacity:0;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0) scale(.8);opacity:0}12%{opacity:.55}100%{transform:translateY(-115vh) scale(1.25) rotate(18deg);opacity:0}}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
+html,body{height:100%}body{background:var(--bg);color:var(--tx)}
+button,.btn{display:block;text-align:center;text-decoration:none;background:var(--ac);color:#fff;border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:600;width:100%;margin-top:10px}
+.g{background:transparent!important;color:var(--ac)!important;border:1px solid var(--ac)!important}
+input,textarea{width:100%;padding:11px;margin-top:8px;border-radius:10px;border:1px solid var(--mut);background:var(--card);color:var(--tx);font-size:15px}
+#auth{max-width:380px;margin:auto;padding:40px 20px;text-align:center}#sf{display:none}
+#app{display:none;height:100%;flex-direction:column}
+#pages{flex:1;overflow:auto;padding:12px;padding-top:calc(12px + env(safe-area-inset-top))}
+.pg{display:none}.pg.on{display:block}
+nav{display:flex;background:var(--card);padding-bottom:env(safe-area-inset-bottom);border-top:1px solid #0002}
+nav b{flex:1;text-align:center;padding:10px 0;font-size:12px;color:var(--mut)}nav b.on{color:var(--ac)}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+video{width:100%;border-radius:14px;background:#000;aspect-ratio:16/9;object-fit:cover}
+#hv{position:fixed;left:0;top:0;width:100%;height:100%;border-radius:0;aspect-ratio:auto;z-index:-1;background:#2a0a1a}
+#himg{position:fixed;left:0;top:0;width:100%;height:100%;z-index:-1;background:#2a0a1a center/cover no-repeat;display:none}
+#hi{color:#fff;text-shadow:0 2px 8px #000}
+.scr{flex:0 0 44%;min-height:0;background:#000;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff8;text-align:center;padding:10px}
+.seats{display:flex;justify-content:center;gap:36px;margin:18px 0}.seat{text-align:center;font-size:12px}
+.av{width:66px;height:66px;border-radius:50%;background:var(--card);border:3px solid var(--ac);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--ac);margin:0 auto 4px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #0002}.row button{width:auto;margin:0}
+#inv{display:none;position:fixed;left:0;right:0;bottom:0;background:var(--card);padding:16px;border-radius:18px 18px 0 0;box-shadow:0 -4px 20px #0006;z-index:5}
+#ytw iframe,#ytp{width:100%;height:100%;border-radius:14px}
+#pv{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:var(--bg);z-index:30;overflow:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top))}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.grid>div{aspect-ratio:1;background:#0003 center/cover no-repeat;position:relative;border-radius:4px}
+.grid b{position:absolute;top:3px;right:3px;background:#000a;color:#fff;border-radius:11px;min-width:22px;height:22px;text-align:center;line-height:22px;font-size:12px;padding:0 5px}
+.ring{padding:3px;border-radius:50%;background:linear-gradient(45deg,#ff5fa2,#ffb3d1,#ec4899);display:inline-block}.ring .av{border:3px solid var(--bg);margin:0}
+#sv{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:#000;z-index:40;align-items:center;justify-content:center;flex-direction:column}
+#sv img{max-width:100%;max-height:85%}#svc{color:#fff;padding:10px;text-align:center}
+#pm{display:none;position:fixed;left:0;right:0;bottom:0;background:var(--card);padding:16px;border-radius:18px 18px 0 0;box-shadow:0 -4px 20px #0006;z-index:6}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#000c;color:#fff;padding:9px 16px;border-radius:20px;display:none;z-index:9;font-size:14px}
+
+#pages.lock{overflow:hidden}#pages.lock .pg.on{height:100%}
+#rview,#cview{height:100%;flex-direction:column;gap:8px}
+.vrow{display:flex;align-items:center;gap:8px}.vrow .seat{flex:0 0 auto;max-width:70px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.av.sm{width:42px;height:42px;font-size:18px;border-width:2px;margin:0 auto 2px}
+.seatgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 4px}.seatgrid .seat{position:relative;max-width:none;min-width:0;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.seatgrid .seat.off{opacity:.45}.seatgrid .seat .kx{position:absolute;top:-2px;right:6px;width:18px;height:18px;line-height:16px;padding:0;margin:0;border-radius:50%;background:#c33;font-size:11px}
+.av.vc{border-color:#22c55e;box-shadow:0 0 0 3px #22c55e66}
+.vb{padding:8px 10px;font-size:13px;margin:0;width:auto}
+.chat{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--card);border-radius:14px;padding:8px}
+.msgs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:4px}
+.msg{max-width:78%;padding:7px 10px;border-radius:12px;font-size:14px;word-break:break-word;display:flex;flex-direction:column}
+.msg.me{align-self:flex-end;background:var(--ac);color:#fff;border-bottom-right-radius:3px}
+.msg.ot{align-self:flex-start;background:#8882;border-bottom-left-radius:3px}
+.msg .tm{font-size:10px;opacity:.7;align-self:flex-end;margin-top:2px}.msg .nm{font-size:11px;color:var(--ac);font-weight:700}
+.inrow{display:flex;gap:6px;margin-top:6px}.inrow input{margin:0}.inrow button{width:auto;margin:0;padding:0 16px}
+.crow{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #0002}
+.crow .av{flex:0 0 46px;margin:0}.cmid{flex:1;min-width:0}.cmid small{display:block;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr{text-align:right}.cr small{color:var(--mut);display:block}
+.bd{background:#22c55e;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-style:normal;display:inline-block;margin-top:3px}
+nav b{position:relative}#cb{position:absolute;top:5px;right:24%;display:none;width:10px;height:10px;border-radius:50%;background:#22c55e}
+.acts{display:flex;gap:6px}.acts button{padding:7px 10px;font-size:13px}.dng{background:#ef4444!important}
+#ask{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#0008;align-items:center;justify-content:center;z-index:20}
+</style></head><body>
+<div id="toast"></div>
+
+<div id="auth"><h2 style="color:var(--ac)">Our Room 💖</h2>
+<div id="lf"><input id="le" type="email" placeholder="Email"><input id="lp" type="password" placeholder="Password">
+<button onclick="login()">Login</button><button class="g" onclick="show('sf')">Naya account</button></div>
+<div id="sf"><input id="su" placeholder="Username (a-z, 0-9, _)"><input id="se" type="email" placeholder="Email"><input id="sp" type="password" placeholder="Password (min 6)">
+<button onclick="signup()">Sign Up</button><button class="g" onclick="show('lf')">Back</button></div>
+<button class="g" id="sb" style="width:auto;display:inline-block;padding:6px 14px;font-size:13px;margin-top:18px" onclick="songToggle()">🔊 Song</button></div>
+<audio id="lsong" src="login.mp3" loop preload="auto"></audio>
+
+<div id="app"><div id="pages">
+
+<div class="pg on" id="pg0"><video id="hv" autoplay muted loop playsinline></video>
+<div id="himg"></div><h2 id="hi" style="margin:14px 4px"></h2>
+<div style="display:flex;gap:8px;margin:0 4px"><label class="btn" style="background:#0009;margin:0;flex:1">🖼 Wallpaper<input type="file" accept="image/*,video/*" style="display:none" onchange="wpPick(this.files[0])"></label><button style="background:#0009;margin:0;flex:1" onclick="wpReset()">Reset</button></div></div>
+
+<div class="pg" id="pg1">
+<div id="rlist"><div class="card"><b>Naya room</b><input id="rname" placeholder="Room ka naam"><button onclick="newRoom()">+ Create Room</button></div>
+<div class="card"><b>Code se join</b><input id="jc" placeholder="Room code"><button onclick="joinRoom($('jc').value.trim())">Join</button></div>
+<div class="card"><b>Purane rooms</b><div id="rl"></div></div></div>
+<div id="rview" style="display:none">
+<div class="row" style="border:0;padding:0"><b id="rn"></b><span style="display:flex;gap:6px"><button class="g" id="lk" style="display:none" onclick="toggleLock()">🔓</button><button class="g" onclick="leave()">Back</button></span></div>
+<div class="row" style="border:0;gap:6px;padding:0"><input id="bq" placeholder="Search ya link (YouTube link paste karo)" style="margin:0"><button onclick="NAT&&Android.back()" style="width:46px">◀</button><button onclick="go()" style="width:70px">Go</button><button onclick="NAT&&Android.full(true)" style="width:46px">⛶</button></div>
+<div class="scr" id="scr" style="position:relative"><span id="ph">Upar search ya link daalo</span>
+<iframe id="fr" allow="autoplay;fullscreen" style="display:none;position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:14px;background:#fff"></iframe>
+<div id="ytw" style="display:none;position:absolute;inset:0"><div id="ytp"></div></div></div>
+<div class="seatgrid" id="seats"></div>
+<div style="text-align:center"><div style="display:flex;gap:6px;justify-content:center"><button class="vb" id="vm" onclick="voiceBtn()">🎤 Voice join</button><button class="vb g" id="vl" style="display:none" onclick="voiceLeave()">📵 Leave</button></div><small id="vst" style="color:var(--mut)"></small></div>
+<div class="chat"><div class="msgs" id="rc"></div><div class="inrow"><input id="rci" placeholder="Message likho..." onkeydown="if(event.key=='Enter')sendRC()"><button onclick="sendRC()">➤</button></div></div>
+</div></div>
+
+<div class="pg" id="pg2"><div class="card"><b>Friend add karo</b><input id="fu" placeholder="Username"><button onclick="addFriend()">Add</button></div>
+<div class="card"><b>Friends</b><div id="fl"></div></div>
+<div class="card"><b>Blocked</b><div id="bl"></div></div></div>
+
+<div class="pg" id="pg3">
+<div class="card" style="text-align:center"><div class="av" id="pav" style="width:90px;height:90px;font-size:38px"></div><h3 id="pn"></h3><small id="pu" style="color:var(--mut)"></small>
+<label class="btn g">Profile picture badlo<input type="file" accept="image/*" style="display:none" onchange="pickPhoto(this.files[0])"></label><button class="g" onclick="openProfile(me.uid)">👁 Meri profile dekho</button></div>
+<div class="card"><b>Bio</b><textarea id="bio" rows="2" maxlength="150" placeholder="Apni bio likho..."></textarea><button onclick="saveBio()">Save bio</button></div>
+<div class="card"><b>Meri photos</b><input id="pcap" placeholder="Caption (optional)">
+<div style="display:flex;gap:8px"><label class="btn" style="flex:1">➕ Photo<input type="file" accept="image/*" style="display:none" onchange="addPost(this.files[0]);this.value=''"></label><label class="btn g" style="flex:1">➕ Story<input type="file" accept="image/*" style="display:none" onchange="addStory(this.files[0]);this.value=''"></label></div>
+<div class="grid" id="myposts" style="margin-top:10px"></div></div>
+<div class="card"><b>Naam badlo</b><input id="nn" placeholder="Naya username"><button onclick="chName()">Save</button></div>
+<div class="card"><b>Feedback</b><textarea id="fb" rows="3" placeholder="Kuch bhi likho..."></textarea><button onclick="feedback()">Send</button></div>
+<div class="card"><b>Settings</b><div class="row"><span>Dark mode</span><input type="checkbox" id="dk" style="width:auto;margin:0" onchange="theme(this.checked)"></div><div class="row"><span>Button sound</span><input type="checkbox" id="sn" style="width:auto;margin:0" onchange="setSnd(this.checked)"></div></div>
+<a class="btn" id="tg" target="_blank" rel="noopener">Contact Care (Telegram)</a>
+<button class="g" onclick="A.signOut().then(()=>location.reload())">Logout</button></div>
+<div class="pg" id="pg4">
+<div id="clist"><div class="card"><b>Chats</b><div id="cl" style="margin-top:6px"></div></div></div>
+<div id="cview" style="display:none"><div class="row" style="border:0;padding:0;gap:10px;justify-content:flex-start"><button class="g" style="width:auto;margin:0;padding:8px 14px" onclick="closeChat()">←</button><div class="av sm" id="cha" style="margin:0"></div><b id="chn"></b></div>
+<div class="chat"><div class="msgs" id="cmsg"></div><div class="inrow"><input id="ci" placeholder="Message likho..." onkeydown="if(event.key=='Enter')sendDM()"><button onclick="sendDM()">➤</button></div></div></div></div>
+</div>
+<nav><b class="on" data-t="0" onclick="tab(0)">🏠<br>Home</b><b data-t="4" onclick="tab(4)">💬<br>Chats<i id="cb"></i></b><b data-t="1" onclick="tab(1)">🎬<br>Room</b><b data-t="2" onclick="tab(2)">➕<br>Add Friend</b><b data-t="3" onclick="tab(3)">👤<br>Profile</b></nav></div>
+
+<div id="ask"><div class="card" style="width:85%;max-width:340px;margin:0"><p id="at" style="margin-bottom:6px"></p><button id="ao" class="dng" onclick="askDone(1)">OK</button><button class="g" onclick="askDone(0)">Cancel</button></div></div>
+<audio id="ra" autoplay playsinline></audio>
+<div id="pv"><div class="row" style="border:0;padding:0;justify-content:flex-start;gap:10px"><button class="g" style="width:auto;margin:0;padding:8px 14px" onclick="$('pv').style.display='none'">←</button><b id="pvh"></b></div>
+<div style="text-align:center;margin:10px 0"><span class="ring" id="pvr"><div class="av" id="pva" style="width:90px;height:90px;font-size:38px" onclick="pvStory()"></div></span><h3 id="pvn"></h3><small id="pvu" style="color:var(--mut)"></small><p id="pvb" style="margin-top:8px;white-space:pre-wrap"></p></div>
+<div class="card" style="padding:8px"><div class="grid" id="pvg"></div><small id="pve" style="display:none;color:var(--mut)">Abhi koi photo nahi</small></div></div>
+<div id="sv" onclick="svNext()"><img id="svi"><div id="svc"></div></div>
+<div id="pm"><b>Profile</b><button onclick="viewPartner()">👤 View profile</button><button class="g" onclick="$('pm').style.display='none'">Close</button></div>
+<div id="inv"><b>Seat me kisko bulana hai?</b><button onclick="shareLink()">Invite link bhejo</button>
+<div id="il" style="margin:8px 0"></div><button class="g" onclick="$('inv').style.display='none'">Close</button></div>
+
+<div id="hearts"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+// ===== APNI CHIZEIN YAHAN BADLO =====
+const ANIME="";                                // (optional) direct .mp4 link; ya Firebase: watch/config/homeVideo
+const TG="https://t.me/YOUR_TELEGRAM_USERNAME"; // tumhara Telegram
+// ====================================
+firebase.initializeApp({apiKey:"AIzaSyDuElrxG_VZDQ18bUKxHPgfEQLHRaTvmwU",authDomain:"esports-app-2187b.firebaseapp.com",databaseURL:"https://esports-app-2187b-default-rtdb.firebaseio.com",projectId:"esports-app-2187b",appId:"1:598600940260:web:12580fa20aba4b93720af1"});
+const A=firebase.auth(),W=firebase.database().ref('watch'),$=i=>document.getElementById(i);
+let bref=null,bs=null,yp=null,yready=false,lastV=null,applying=false,prev=0,off=0,me=null,my={},cur=null,room={},rref=null,friends={},tt;
+const inviteRoom=new URLSearchParams(location.search).get('room');
+const NAT=!!window.Android;$('tg').href=TG;
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2500)}
+function theme(d){document.body.classList.toggle('dark',d);$('dk').checked=d;try{localStorage.dark=d?1:''}catch(e){}}
+try{theme(localStorage.dark!=='')}catch(e){theme(true)}
+function show(f){$('lf').style.display=f=='lf'?'block':'none';$('sf').style.display=f=='sf'?'block':'none'}
+function tab(i){document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id=='pg'+i));document.querySelectorAll('nav b').forEach(b=>b.classList.toggle('on',b.dataset.t==i));lockP()}
+function setAv(e,p,n){e.style.backgroundImage=p?'url('+p+')':'';e.style.backgroundSize='cover';e.textContent=p?'':(n||'?')[0].toUpperCase()}
+async function login(){try{await A.signInWithEmailAndPassword($('le').value.trim(),$('lp').value)}catch(e){toast(e.message)}}
+async function signup(){const u=$('su').value.trim().toLowerCase();if(!/^[a-z0-9_]{3,20}$/.test(u))return toast('Username 3-20 letters/numbers/_');
+if((await W.child('usernames/'+u).once('value')).exists())return toast('Ye username le liya gaya hai');
+try{const c=await A.createUserWithEmailAndPassword($('se').value.trim(),$('sp').value);
+await W.child('users/'+c.user.uid).set({username:u});await W.child('usernames/'+u).set(c.user.uid)}catch(e){toast(e.message)}}
+A.onAuthStateChanged(async u=>{me=u;songCtl(!u);$('auth').style.display=u?'none':'block';$('app').style.display=u?'flex':'none';if(!u)return;
+W.child('users/'+u.uid).on('value',s=>{my=s.val()||{};$('pn').textContent=my.username||'';$('pu').textContent='@'+(my.username||'');$('hi').textContent='Hi '+(my.username||'')+' 💖';setAv($('pav'),my.photo,my.username);if(document.activeElement!==$('bio'))$('bio').value=my.bio||'';renderSeats()});
+W.child('posts/'+u.uid).on('value',s=>renderGrid($('myposts'),s.val()||{},true,u.uid));
+W.child('config/telegram').on('value',s=>{if(s.val())$('tg').href=s.val()});
+W.child('config/homeVideo').on('value',s=>{cfgVideo=s.val()||ANIME;wpApply()});
+W.child('userRooms/'+u.uid).on('value',s=>renderRooms(s.val()||{}));
+W.child('friends/'+u.uid).on('value',s=>{friends=s.val()||{};renderFriends()});
+W.child('blocked/'+u.uid).on('value',s=>{blocked=s.val()||{};renderBlocked()});
+W.child('chatMeta/'+u.uid).on('value',s=>{meta=s.val()||{};renderChats()});
+if(inviteRoom)joinRoom(inviteRoom)});
+function renderRooms(r){const b=$('rl');b.textContent='';const ks=Object.keys(r).sort((a,c)=>r[c].ts-r[a].ts);if(!ks.length)b.textContent='Abhi koi room nahi';
+ks.forEach(k=>{const d=document.createElement('div');d.className='row';d.textContent=r[k].name;d.onclick=()=>openRoom(k);b.append(d)})}
+async function newRoom(){const n=$('rname').value.trim();if(!n)return toast('Room ka naam likho');const id=W.child('rooms').push().key;
+await W.child('rooms/'+id).set({name:n,owner:me.uid,members:{[me.uid]:true}});await W.child('userRooms/'+me.uid+'/'+id).set({name:n,ts:Date.now()});$('rname').value='';openRoom(id)}
+function openRoom(id){if(cur&&cur!=id){voiceLeave();chatStop();W.child('rooms/'+cur+'/online/'+me.uid).remove()}cur=id;setOnline();$('rlist').style.display='none';$('rview').style.display='flex';lockP();chatStart();if(rref)rref.off();rref=W.child('rooms/'+id);if(bref)bref.off();bref=W.child('rooms/'+id+'/browser');lastV=null;curUrl='';if(vref)vref.off();vref=W.child('rooms/'+id+'/bvideo');vref.on('value',s=>vapply(s.val()));bref.on('value',s=>{bs=s.val();bapply(bs)});
+rref.on('value',s=>{room=s.val()||{};if(room.kicked&&room.kicked[me.uid]){toast('Tumhe room se nikala gaya');leave();return}$('rn').textContent=room.name||'';renderSeats()})}
+function leave(){voiceLeave();chatStop();if(cur&&me)W.child('rooms/'+cur+'/online/'+me.uid).remove();if(rref)rref.off();if(vref)vref.off();vref=null;if(bref)bref.off();bref=null;bapply(null);try{yp.stopVideo()}catch(e){}lastV=null;cur=null;$('rlist').style.display='block';$('rview').style.display='none';lockP()}
+let seatTok=0,vPresent={};
+function markVc(){document.querySelectorAll('#seats [data-uid]').forEach(e=>e.querySelector('.av').classList.toggle('vc',!!vPresent[e.dataset.uid]))}
+async function renderSeats(){if(!cur||!me)return;$('lk').style.display=isOwner()?'inline-block':'none';$('lk').textContent=room.locked?'🔒':'🔓';
+const tok=++seatTok,on=room.online||{},oth=Object.keys(room.members||{}).filter(x=>x!=me.uid).sort((a,b)=>(!!on[b])-(!!on[a]));
+const us=await Promise.all(oth.map(getU));if(tok!=seatTok||!cur)return;
+const g=$('seats');g.textContent='';
+const seat=(uid,u,isMe)=>{const d=document.createElement('div');d.className='seat'+(isMe||on[uid]?'':' off');d.dataset.uid=uid;const a=document.createElement('div');a.className='av sm';setAv(a,u.photo,u.username);const n=document.createElement('span');n.textContent=isMe?(u.username||'You'):(u.username||'');d.append(a,n);
+if(!isMe){d.onclick=()=>{pmUid=uid;$('pm').style.display='block'};if(isOwner()){const k=document.createElement('button');k.className='kx';k.textContent='✕';k.onclick=e=>{e.stopPropagation();kickUser(uid,u.username)};d.append(k)}}
+g.append(d)};
+seat(me.uid,my,true);oth.forEach((id,i)=>seat(id,us[i]||{},false));
+for(let i=oth.length+1;i<MAXSEAT;i++){const d=document.createElement('div');d.className='seat';const a=document.createElement('div');a.className='av sm';a.textContent='+';a.onclick=()=>$('inv').style.display='block';const n=document.createElement('span');n.textContent='Invite';d.append(a,n);g.append(d)}
+markVc()}
+function shareLink(){if(NAT)return Android.share('Mere room me aao! ONYX app kholo, Rooms tab me "Code se join" me ye code daalo: '+cur);const l=location.origin+location.pathname+'?room='+cur;
+if(navigator.share)navigator.share({title:'Room join karo',text:'Mere room me aao',url:l}).catch(()=>{});
+else{try{navigator.clipboard.writeText(l);toast('Link copy ho gaya')}catch(e){toast(l)}}}
+async function addToRoom(f){if(room.locked&&!isOwner())return toast('Room lock hai, sirf owner add kar sakta hai');W.child('rooms/'+cur+'/kicked/'+f).remove();if(Object.keys(room.members||{}).length>=MAXSEAT&&!(room.members||{})[f])return toast('Room me '+MAXSEAT+' hi seat hain');
+await W.child('rooms/'+cur+'/members/'+f).set(true);await W.child('userRooms/'+f+'/'+cur).set({name:room.name,ts:Date.now()});$('inv').style.display='none';toast('Add ho gaya')}
+async function joinRoom(id){const r=(await W.child('rooms/'+id).once('value')).val();if(!r)return toast('Room nahi mila');
+const m=r.members||{};if(r.kicked&&r.kicked[me.uid])return toast('Tumhe is room se nikala gaya hai');if(r.locked&&!m[me.uid])return toast('Room lock hai');if(!m[me.uid]&&Object.keys(m).length>=MAXSEAT)return toast('Room full hai');
+await W.child('rooms/'+id+'/members/'+me.uid).set(true);await W.child('userRooms/'+me.uid+'/'+id).set({name:r.name,ts:Date.now()});
+history.replaceState(null,'',location.pathname);tab(1);openRoom(id)}
+async function addFriend(){const n=$('fu').value.trim().toLowerCase();if(!n)return;const id=(await W.child('usernames/'+n).once('value')).val();
+if(!id)return toast('User nahi mila');if(id==me.uid)return toast('Ye to tum ho');if((await W.child('blocked/'+id+'/'+me.uid).once('value')).exists())return toast('User nahi mila');if(blocked[id])return toast('Pehle unblock karo');
+await W.child('friends/'+me.uid+'/'+id).set(n);await W.child('friends/'+id+'/'+me.uid).set(my.username);$('fu').value='';toast('Friend add ho gaya')}
+function pickPhoto(f){if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=c.height=160;
+const s=Math.min(i.width,i.height);c.getContext('2d').drawImage(i,(i.width-s)/2,(i.height-s)/2,s,s,0,0,160,160);
+W.child('users/'+me.uid+'/photo').set(c.toDataURL('image/jpeg',.7));toast('Photo badal gayi')};i.src=r.result};r.readAsDataURL(f)}
+async function chName(){const n=$('nn').value.trim().toLowerCase();if(!/^[a-z0-9_]{3,20}$/.test(n))return toast('3-20 letters/numbers/_');
+if((await W.child('usernames/'+n).once('value')).exists())return toast('Ye naam le liya gaya hai');
+await W.child('usernames/'+my.username).remove();await W.child('usernames/'+n).set(me.uid);await W.child('users/'+me.uid+'/username').set(n);$('nn').value='';toast('Naam badal gaya')}
+function feedback(){const t=$('fb').value.trim();if(!t)return;W.child('feedback').push({uid:me.uid,u:my.username,t,ts:Date.now()}).then(()=>{$('fb').value='';toast('Feedback mil gaya')})}
+
+firebase.database().ref('.info/serverTimeOffset').on('value',s=>off=s.val()||0);const now=()=>Date.now()+off;
+function onYouTubeIframeAPIReady(){yp=new YT.Player('ytp',{width:'100%',height:'100%',playerVars:{playsinline:1},events:{onReady:()=>{yready=true;if(bs)bapply(bs)},onStateChange:e=>{if(e.data==1||e.data==2)bpush()}}})}
+function go(){const q=$('bq').value.trim();if(!q||!cur)return;if(NAT)return goN(q);
+const m=q.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/);
+if(m)return bset({type:'yt',vid:m[1],playing:true,t:0});
+if(/youtube\.com|youtu\.be/.test(q))return toast('YouTube me video ka poora link paste karo');
+let u=q;if(!/^https?:\/\//.test(u))u=/^[\w-]+(\.[\w-]+)+(\/|$)/.test(u)?'https://'+u:'https://www.google.com/search?igu=1&q='+encodeURIComponent(u);
+bset({type:'web',url:u})}
+function bset(o){o.ts=firebase.database.ServerValue.TIMESTAMP;o.by=me.uid;bref.set(o)}
+function bpush(){if(applying||!bref||!lastV)return;bref.set({type:'yt',vid:lastV,playing:yp.getPlayerState()==1,t:yp.getCurrentTime(),ts:firebase.database.ServerValue.TIMESTAMP,by:me.uid})}
+function bapply(s){if(NAT)return bapplyN(s);const fr=$('fr'),yw=$('ytw');$('ph').style.display=s?'none':'block';
+if(!s){fr.style.display=yw.style.display='none';fr.removeAttribute('src');return}
+if(s.type=='web'){yw.style.display='none';try{yp.pauseVideo()}catch(e){}lastV=null;fr.style.display='block';if(fr.getAttribute('src')!=s.url)fr.src=s.url;$('bq').value=s.url;return}
+fr.style.display='none';fr.removeAttribute('src');yw.style.display='block';if(!yready)return;
+if(s.by==me.uid&&s.vid==lastV)return;applying=true;
+if(s.vid!=lastV){lastV=s.vid;yp.loadVideoById(s.vid,s.t||0)}
+else{const e=s.playing?s.t+(now()-s.ts)/1000:s.t;if(Math.abs(yp.getCurrentTime()-e)>1.5)yp.seekTo(e,true);s.playing?yp.playVideo():yp.pauseVideo()}
+setTimeout(()=>applying=false,1500)}
+setInterval(()=>{if(!yready||!lastV||applying)return;const c=yp.getCurrentTime();if(Math.abs(c-prev-1)>2&&yp.getPlayerState()!=3)bpush();prev=c},1000);
+
+let curUrl='',vref=null,lastR='',lastVis=null;
+function goN(q){let u=q;if(!/^https?:\/\//.test(u))u=/^[\w-]+(\.[\w-]+)+(\/|$)/.test(u)?'https://'+u:'https://www.google.com/search?q='+encodeURIComponent(u);curUrl=u;Android.load(u);bset({type:'web',url:u})}
+function bapplyN(s){$('ph').style.display=s&&s.type=='web'?'none':'block';if(s&&s.type=='web'&&s.url&&s.url!=curUrl){curUrl=s.url;$('bq').value=s.url;Android.load(s.url)}}
+window.onBrowserNav=u=>{if(cur&&u!=curUrl){curUrl=u;$('bq').value=u;bset({type:'web',url:u})}};
+window.onVideoEvt=(t,s)=>{if(cur&&vref)vref.set({playing:t!='pause',t:s,ts:firebase.database.ServerValue.TIMESTAMP,by:me.uid})};
+function vapply(v){if(!NAT||!v||v.by==me.uid)return;Android.cmd(!!v.playing,v.playing?v.t+(now()-v.ts)/1000:v.t)}
+function syncBr(){if(!NAT)return;const on=!!cur&&$('pg1').classList.contains('on')&&$('inv').style.display!='block'&&$('pm').style.display!='block'&&$('pv').style.display!='block'&&$('sv').style.display!='flex';
+if(!on){if(lastVis!==false){Android.show(false);lastVis=false}return}
+const r=$('scr').getBoundingClientRect(),k=[r.left,r.top,r.width,r.height].map(Math.round).join();
+if(k!==lastR||lastVis!==true){lastR=k;Android.setRect(r.left,r.top,r.width,r.height);Android.show(true);lastVis=true}}
+setInterval(syncBr,400);
+
+let cfgVideo=ANIME,wpURL=null;
+const idb=()=>new Promise((ok,no)=>{const r=indexedDB.open('wp',1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>ok(r.result);r.onerror=()=>no()});
+async function wpSet(f){const d=await idb();return new Promise(ok=>{const t=d.transaction('k','readwrite');f?t.objectStore('k').put(f,'wp'):t.objectStore('k').delete('wp');t.oncomplete=()=>ok()})}
+async function wpGet(){try{const d=await idb();return await new Promise(ok=>{const q=d.transaction('k').objectStore('k').get('wp');q.onsuccess=()=>ok(q.result);q.onerror=()=>ok(null)})}catch(e){return null}}
+async function wpApply(){const f=await wpGet(),hv=$('hv'),hi=$('himg');if(wpURL){URL.revokeObjectURL(wpURL);wpURL=null}
+if(f){wpURL=URL.createObjectURL(f);if((f.type||'').startsWith('video')){hi.style.display='none';hv.style.display='block';hv.src=wpURL;hv.play().catch(()=>{});return}
+hv.removeAttribute('src');hv.style.display='none';hi.style.backgroundImage='url('+wpURL+')';hi.style.display='block';return}
+hi.style.display='none';hv.style.display='block';const v=cfgVideo;if(v&&hv.getAttribute('src')!=v){hv.src=v;hv.play().catch(()=>{})}else if(!v)hv.removeAttribute('src')}
+async function wpPick(f){if(!f)return;if(f.size>150e6)return toast('File badi hai, 150MB se kam rakho');try{await wpSet(f);await wpApply();toast('Wallpaper set ho gaya')}catch(e){toast('Save nahi hua')}}
+async function wpReset(){await wpSet(null);await wpApply();toast('Wallpaper hata diya')}
+wpApply();
+</script>
+<script>
+// ================= NAYE FEATURES =================
+const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
+{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]};
+let blocked={},meta={},uc={},chatOpen=null,cref=null,rcref=null,pind=null,askCb=null,cuT=0;
+function lockP(){$('pages').classList.toggle('lock',(!!cur&&$('pg1').classList.contains('on'))||(!!chatOpen&&$('pg4').classList.contains('on')))}
+function ask(t,ok,cb){$('at').textContent=t;$('ao').textContent=ok;askCb=cb;$('ask').style.display='flex'}
+function askDone(y){$('ask').style.display='none';const c=askCb;askCb=null;if(y&&c)c()}
+function mk(t,f,c){const b=document.createElement('button');b.textContent=t;if(c)b.className=c;b.onclick=e=>{e.stopPropagation();f()};return b}
+function fmt(ts){const d=new Date(ts),n=new Date();return d.toDateString()==n.toDateString()?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):d.getDate()+'/'+(d.getMonth()+1)}
+async function getU(id){if(!uc[id]||Date.now()-uc[id].t>60000){const v=(await W.child('users/'+id).once('value')).val()||{};uc[id]={v,t:Date.now()}}return uc[id].v}
+
+// ---- Login song ----
+let sOn=true;
+function songCtl(play){const a=$('lsong');if(!a)return;if(play&&sOn){a.play().catch(()=>{document.addEventListener('click',()=>{if(!me&&sOn)a.play().catch(()=>{})},{once:true})})}else a.pause()}
+function songToggle(){sOn=!sOn;$('sb').textContent=sOn?'🔊 Song':'🔇 Song';songCtl(!me)}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)$('lsong').pause();else songCtl(!me)});
+
+// ---- Friends: delete / block ----
+function renderFriends(){['fl','il'].forEach(x=>{const b=$(x);b.textContent='';const ks=Object.keys(friends);if(!ks.length)b.textContent='Koi friend nahi';
+ks.forEach(k=>{const d=document.createElement('div');d.className='row';const n=document.createElement('span');n.textContent='@'+friends[k];d.append(n);
+if(x=='il')d.append(mk('Add',()=>addToRoom(k)));
+else{const g=document.createElement('div');g.className='acts';g.append(mk('👤',()=>openProfile(k)),mk('💬',()=>{tab(4);openChat(k)}),mk('Delete',()=>delFriend(k),'dng'),mk('Block',()=>blockUser(k),'dng'));d.append(g)}
+b.append(d)})});renderChats()}
+function renderBlocked(){const b=$('bl');b.textContent='';const ks=Object.keys(blocked);if(!ks.length)b.textContent='Koi blocked nahi';
+ks.forEach(k=>{const d=document.createElement('div');d.className='row';const n=document.createElement('span');n.textContent='@'+blocked[k];d.append(n,mk('Unblock',()=>unblock(k)));b.append(d)})}
+function delFriend(k){const n=friends[k];ask('@'+n+' ko friends se hata du?','Delete',async()=>{await W.child('friends/'+me.uid+'/'+k).remove();await W.child('friends/'+k+'/'+me.uid).remove();if(chatOpen==k)closeChat();toast('Friend delete ho gaya')})}
+function blockUser(k){const n=friends[k];ask('@'+n+' ko block kar du? Wo tumhe add ya message nahi kar payega.','Block',async()=>{await W.child('blocked/'+me.uid+'/'+k).set(n);await W.child('friends/'+me.uid+'/'+k).remove();await W.child('friends/'+k+'/'+me.uid).remove();if(chatOpen==k)closeChat();toast('Block ho gaya')})}
+function unblock(k){W.child('blocked/'+me.uid+'/'+k).remove().then(()=>toast('Unblock ho gaya'))}
+
+// ---- Bubbles (room chat + DM) ----
+function bubble(box,m,mine,nm){const d=document.createElement('div');d.className='msg '+(mine?'me':'ot');
+if(nm&&!mine){const s=document.createElement('small');s.className='nm';s.textContent=nm;d.append(s)}
+const t=document.createElement('span');t.textContent=m.t;const tm=document.createElement('small');tm.className='tm';tm.textContent=m.ts?fmt(m.ts):'';d.append(t,tm);box.append(d);box.scrollTop=box.scrollHeight}
+
+// ---- Room live chat ----
+function chatStart(){chatStop();$('rc').textContent='';rcref=W.child('rooms/'+cur+'/chat').limitToLast(60);rcref.on('child_added',s=>{const m=s.val();bubble($('rc'),m,m.u==me.uid,m.n)});
+pind=W.child('rooms/'+cur+'/voice/peers');pind.on('value',s=>{vPresent=s.val()||{};markVc()})}
+function chatStop(){if(rcref){rcref.off();rcref=null}if(pind){pind.off();pind=null}}
+function sendRC(){const t=$('rci').value.trim();if(!t||!cur)return;$('rci').value='';W.child('rooms/'+cur+'/chat').push({u:me.uid,n:my.username||'',t,ts:firebase.database.ServerValue.TIMESTAMP})}
+
+// ---- Chats tab (WhatsApp style, Firebase me save) ----
+const cid=(a,b)=>[a,b].sort().join('_');
+function renderChats(){const b=$('cl');if(!b)return;b.textContent='';const ks=Object.keys(friends).sort((a,c)=>((meta[c]||{}).ts||0)-((meta[a]||{}).ts||0));
+if(!ks.length)b.textContent='Pehle friend add karo, phir yahan chat karo';let tot=0;
+ks.forEach(k=>{const m=meta[k]||{};tot+=m.unread||0;const d=document.createElement('div');d.className='crow';d.onclick=()=>openChat(k);
+const av=document.createElement('div');av.className='av sm';const c=document.createElement('div');c.className='cmid';
+const n=document.createElement('b');n.textContent='@'+friends[k];const l=document.createElement('small');l.textContent=m.last||'Chat shuru karo';c.append(n,l);
+const r=document.createElement('div');r.className='cr';const tm=document.createElement('small');tm.textContent=m.ts?fmt(m.ts):'';r.append(tm);
+if(m.unread){const u=document.createElement('span');u.className='bd';u.textContent=m.unread;r.append(u)}
+d.append(av,c,r);b.append(d);getU(k).then(u=>setAv(av,u.photo,u.username||friends[k]))});
+$('cb').style.display=tot?'block':'none'}
+function clearUnread(k){clearTimeout(cuT);cuT=setTimeout(()=>{if(me)W.child('chatMeta/'+me.uid+'/'+k+'/unread').set(0)},300)}
+async function openChat(k){if(blocked[k])return toast('Pehle unblock karo');chatOpen=k;$('clist').style.display='none';$('cview').style.display='flex';$('cmsg').textContent='';lockP();
+const u=await getU(k);$('chn').textContent='@'+(friends[k]||u.username||'');setAv($('cha'),u.photo,u.username);
+if(cref)cref.off();cref=W.child('chats/'+cid(me.uid,k)+'/msgs').limitToLast(200);
+cref.on('child_added',s=>{if(chatOpen!=k)return;const m=s.val();bubble($('cmsg'),m,m.f==me.uid);clearUnread(k)});clearUnread(k)}
+function closeChat(){if(cref){cref.off();cref=null}chatOpen=null;$('clist').style.display='block';$('cview').style.display='none';lockP()}
+async function sendDM(){const k=chatOpen,t=$('ci').value.trim();if(!k||!t)return;
+if(blocked[k])return toast('Pehle unblock karo');
+if((await W.child('blocked/'+k+'/'+me.uid).once('value')).exists())return toast('Message nahi ja sakta');
+$('ci').value='';const ts=firebase.database.ServerValue.TIMESTAMP,l=t.slice(0,60);
+await W.child('chats/'+cid(me.uid,k)+'/msgs').push({f:me.uid,t,ts});
+await W.child('chatMeta/'+me.uid+'/'+k).update({last:l,ts:Date.now(),unread:0});
+await W.child('chatMeta/'+k+'/'+me.uid).update({last:l,ts:Date.now(),unread:firebase.database.ServerValue.increment(1)})}
+
+// ---- Voice (WebRTC, signaling Firebase se) ----
+const MAXSEAT=8;
+let vOn=false,vMuted=false,vs=null,vp={},vrefs=[];
+const vb=()=>W.child('rooms/'+cur+'/voice');
+const isOwner=()=>room.owner==me.uid;
+function toggleLock(){if(!isOwner())return;W.child('rooms/'+cur+'/locked').set(!room.locked);toast(room.locked?'Room unlock ho gaya':'Room lock ho gaya, koi naya nahi aa sakta')}
+function kickUser(o,nm){if(!o||!isOwner())return;ask('@'+(nm||'user')+' ko room se nikal du?','Kick',async()=>{
+await W.child('rooms/'+cur+'/kicked/'+o).set(true);await W.child('rooms/'+cur+'/members/'+o).remove();await W.child('rooms/'+cur+'/online/'+o).remove();await W.child('rooms/'+cur+'/voice/peers/'+o).remove();await W.child('userRooms/'+o+'/'+cur).remove();toast('Nikal diya')})}
+function setOnline(){if(!cur||!me)return;const p=W.child('rooms/'+cur+'/online/'+me.uid);p.set(true);p.onDisconnect().remove()}
+firebase.database().ref('.info/connected').on('value',s=>{if(s.val())setOnline()});
+function vst(t){$('vst').textContent=t}
+function vstat(){if(!vOn)return;const k=Object.keys(vp);if(!k.length)return vst('Dosto ka wait...');const n=k.filter(o=>vp[o].st=='connected').length;vst(n==k.length?'Connected ✅ ('+(n+1)+' log voice me)':(k.some(o=>vp[o].st=='failed')?'Kuch log connect nahi hue ❌':'Connecting... '+n+'/'+k.length))}
+function voiceUi(){$('vm').textContent=!vOn?'🎤 Voice join':(vMuted?'🔇 Unmute':'🎙 Mute');$('vl').style.display=vOn?'inline-block':'none';if(!vOn)vst('')}
+function voiceBtn(){if(!cur)return;if(!vOn)return voiceJoin();vMuted=!vMuted;vs.getAudioTracks().forEach(t=>t.enabled=!vMuted);voiceUi()}
+async function voiceJoin(){
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return toast('Mic support nahi hai');
+try{vs=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}catch(e){return toast('Mic ki permission do')}
+if(!cur){vs.getTracks().forEach(t=>t.stop());vs=null;return}
+vOn=true;vMuted=false;const V=vb();
+await V.child('sig/'+me.uid).remove();
+V.child('sig/'+me.uid).onDisconnect().remove();V.child('peers/'+me.uid).onDisconnect().remove();
+await V.child('peers/'+me.uid).set(true);
+vrefs=[V.child('peers')];
+vrefs[0].on('value',s=>vPeers(s.val()||{}));
+voiceUi();vstat()}
+function voiceLeave(){if(!vOn)return;vOn=false;const V=cur?vb():null;vrefs.forEach(r=>r.off());vrefs=[];Object.keys(vp).forEach(dropPeer);
+if(vs){vs.getTracks().forEach(t=>t.stop());vs=null}
+if(V){V.child('peers/'+me.uid).remove();V.child('sig/'+me.uid).remove();V.child('peers/'+me.uid).onDisconnect().cancel();V.child('sig/'+me.uid).onDisconnect().cancel()}
+voiceUi()}
+// Mesh voice: one RTCPeerConnection per other person in voice (max 7). Lower uid sends the offer.
+const outSig=o=>vb().child('sig/'+me.uid+'/'+o),inSig=o=>vb().child('sig/'+o+'/'+me.uid);
+function mkPc(o){const P=vp[o],p=new RTCPeerConnection(ICE);vs.getTracks().forEach(t=>p.addTrack(t,vs));
+p.onicecandidate=e=>{if(e.candidate&&P.pc===p)outSig(o).child('ice').push({sid:P.sid,c:e.candidate.toJSON()})};
+p.ontrack=e=>{P.a.srcObject=e.streams[0];P.a.play().catch(()=>{})};
+p.onconnectionstatechange=()=>{if(P.pc!==p)return;P.st=p.connectionState;vstat()};
+return p}
+function resetPc(o){const P=vp[o];if(!P)return;if(P.pc){try{P.pc.close()}catch(e){}P.pc=null}P.rs=false;P.pend=[];P.st='new';outSig(o).remove()}
+function newPeer(o){if(vp[o])return;const a=document.createElement('audio');a.autoplay=true;a.setAttribute('playsinline','');document.body.append(a);
+const P=vp[o]={pc:null,sid:0,rs:false,pend:[],refs:[],a,st:'new'};
+const d=inSig(o).child('desc'),i=inSig(o).child('ice');
+d.on('value',s=>vDesc(s.val(),o));i.on('child_added',s=>vIce(s.val(),o));P.refs=[d,i];
+if(me.uid<o)startCall(o)}
+function dropPeer(o){const P=vp[o];if(!P)return;P.refs.forEach(r=>r.off());if(P.pc){try{P.pc.close()}catch(e){}}P.a.srcObject=null;P.a.remove();delete vp[o];if(vOn&&cur)outSig(o).remove()}
+function vPeers(p){if(!vOn)return;Object.keys(vp).forEach(o=>{if(!p[o])dropPeer(o)});Object.keys(p).forEach(o=>{if(o!=me.uid&&p[o])newPeer(o)});vstat()}
+async function startCall(o){const P=vp[o];if(!P)return;resetPc(o);P.sid=Date.now();const p=P.pc=mkPc(o);
+try{const of=await p.createOffer();await p.setLocalDescription(of);await outSig(o).child('desc').set({type:'offer',sdp:of.sdp,sid:P.sid})}catch(e){P.st='failed';vstat()}}
+async function vDesc(d,o){const P=vp[o];if(!vOn||!d||!P)return;
+if(d.type=='offer'&&me.uid>o){if(P.pc&&P.sid==d.sid)return;resetPc(o);P.sid=d.sid;const p=P.pc=mkPc(o);
+try{await p.setRemoteDescription({type:'offer',sdp:d.sdp});P.rs=true;flushIce(o);const a=await p.createAnswer();await p.setLocalDescription(a);await outSig(o).child('desc').set({type:'answer',sdp:a.sdp,forSid:d.sid})}catch(e){P.st='failed';vstat()}}
+else if(d.type=='answer'&&me.uid<o&&P.pc&&d.forSid==P.sid&&P.pc.signalingState=='have-local-offer'){try{await P.pc.setRemoteDescription({type:'answer',sdp:d.sdp});P.rs=true;flushIce(o)}catch(e){}}}
+function flushIce(o){const P=vp[o];if(!P)return;const l=P.pend;P.pend=l.filter(x=>x.sid>P.sid);l.forEach(x=>{if(x.sid==P.sid&&P.pc)P.pc.addIceCandidate(x.c).catch(()=>{})})}
+function vIce(x,o){const P=vp[o];if(!x||!P)return;if(P.pc&&P.rs&&x.sid==P.sid)P.pc.addIceCandidate(x.c).catch(()=>{});else P.pend.push(x)}
+(function(){const b=document.getElementById('hearts'),c=['#ff5fa2','#ff8fc0','#ec4899','#ffb3d1'];for(let i=0;i<16;i++){const e=document.createElement('i');e.textContent='♥';e.style.cssText='left:'+Math.random()*100+'%;font-size:'+(14+Math.random()*22)+'px;color:'+c[i%4]+';animation-duration:'+(9+Math.random()*9)+'s;animation-delay:-'+(Math.random()*14)+'s';b.append(e)}})();
+
+const DAY=864e5;let pmUid=null,pvUid=null,pvStories=[],sq=[],si=0,xk=null,snd=true,AUD=null;
+function shrink(f,max,q){return new Promise((ok,no)=>{const r=new FileReader();r.onerror=no;r.onload=()=>{const i=new Image();i.onerror=no;i.onload=()=>{const s=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*s);c.height=Math.round(i.height*s);c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',q))};i.src=r.result};r.readAsDataURL(f)})}
+async function addPost(f){if(!f)return;try{const img=await shrink(f,720,.7);await W.child('posts/'+me.uid).push({img,cap:$('pcap').value.trim(),ts:Date.now()});$('pcap').value='';toast('Photo post ho gayi')}catch(e){toast('Post nahi hui')}}
+async function addStory(f){if(!f)return;try{const img=await shrink(f,900,.7);await W.child('stories/'+me.uid).push({img,ts:Date.now()});toast('Story lag gayi (24 ghante tak)')}catch(e){toast('Story nahi lagi')}}
+function saveBio(){W.child('users/'+me.uid+'/bio').set($('bio').value.trim().slice(0,150));toast('Bio save ho gayi')}
+function renderGrid(el,p,own,uid){el.textContent='';const ks=Object.keys(p).sort((a,b)=>p[b].ts-p[a].ts);
+ks.forEach(k=>{const d=document.createElement('div');d.style.backgroundImage='url('+p[k].img+')';d.onclick=()=>{sq=[{img:p[k].img,cap:p[k].cap}];si=0;svNext()};
+if(own){const x=document.createElement('b');x.textContent='✕';x.onclick=e=>{e.stopPropagation();if(xk==k){xk=null;W.child('posts/'+uid+'/'+k).remove()}else{xk=k;x.textContent='Pakka?';setTimeout(()=>{xk=null;x.textContent='✕'},2500)}};d.append(x)}
+el.append(d)});return ks.length}
+function svNext(){if(si<sq.length){$('svi').src=sq[si].img;$('svc').textContent=sq[si].cap||'';si++;$('sv').style.display='flex'}else{$('sv').style.display='none';sq=[];si=0}}
+function pvStory(){if(pvStories.length){sq=pvStories;si=0;svNext()}}
+function viewPartner(){$('pm').style.display='none';if(pmUid)openProfile(pmUid)}
+async function openProfile(uid){pvUid=uid;$('pv').style.display='block';
+const [u,po,st]=await Promise.all([W.child('users/'+uid).once('value'),W.child('posts/'+uid).once('value'),W.child('stories/'+uid).once('value')]);
+const d=u.val()||{};$('pvh').textContent='@'+(d.username||'');$('pvn').textContent=d.username||'';$('pvu').textContent=uid==me.uid?'(ye tum ho)':'';
+$('pvb').textContent=d.bio||'Bio nahi likhi';setAv($('pva'),d.photo,d.username);
+const t=Date.now();pvStories=Object.values(st.val()||{}).filter(x=>t-x.ts<DAY).sort((a,b)=>a.ts-b.ts);
+$('pvr').style.background=pvStories.length?'':'transparent';
+const n=renderGrid($('pvg'),po.val()||{},false,uid);$('pve').style.display=n?'none':'block'}
+try{snd=localStorage.snd!=='0'}catch(e){}$('sn').checked=snd;
+function setSnd(v){snd=v;try{localStorage.snd=v?1:0}catch(e){}}
+function tick(){if(!snd)return;try{AUD=AUD||new(window.AudioContext||window.webkitAudioContext)();const o=AUD.createOscillator(),g=AUD.createGain(),t=AUD.currentTime;o.type='sine';o.frequency.setValueAtTime(900,t);o.frequency.exponentialRampToValueAtTime(1400,t+.06);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.connect(g);g.connect(AUD.destination);o.start(t);o.stop(t+.13)}catch(e){}}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('button,.btn,nav b,.av,.row'))tick()},true);
+</script>
+</body></html>

@@ -7,6 +7,7 @@ import 'chats_tab.dart';
 import 'home_tab.dart';
 import 'presence.dart';
 import 'profile_tab.dart';
+import 'rooms_tab.dart';
 import 'select_class.dart';
 import 'settings_tab.dart';
 
@@ -53,6 +54,7 @@ class _HomeShellState extends State<HomeShell> {
     final pages = <Widget>[
       const HomeTab(),
       const ChatsTab(),
+      const RoomsTab(),
       const AddTab(),
       ProfilePage(uid: FirebaseAuth.instance.currentUser!.uid, tab: true),
       const SettingsTab(),
@@ -65,6 +67,7 @@ class _HomeShellState extends State<HomeShell> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
+          NavigationDestination(icon: Icon(Icons.mic_none), selectedIcon: Icon(Icons.mic), label: 'Rooms'),
           NavigationDestination(icon: Icon(Icons.person_add_alt), label: 'Add'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
           NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'More'),
