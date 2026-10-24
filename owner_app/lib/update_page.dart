@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'main.dart';
@@ -15,12 +18,22 @@ class _UpdatePageState extends State<UpdatePage> {
   final url = TextEditingController();
   final notes = TextEditingController();
   final agora = TextEditingController();
+  final repo = TextEditingController();
+  int? liveCode; // version users currently get
   bool force = true;
   bool busy = false;
 
   @override
   void initState() {
     super.initState();
+    db.ref('appConfig/githubRepo').get().then((s) {
+      if (s.value != null && mounted) setState(() => repo.text = '${s.value}');
+    }).catchError((_) {});
+    db.ref('appConfig/update/versionCode').get().then((s) {
+      if (s.value != null && mounted) {
+        setState(() => liveCode = int.tryParse('${s.value}'));
+      }
+    }).catchError((_) {});
     db.ref('appConfig/agoraAppId').get().then((s) {
       if (s.value != null && mounted) setState(() => agora.text = '${s.value}');
     }).catchError((_) {});
@@ -46,6 +59,7 @@ class _UpdatePageState extends State<UpdatePage> {
     }
     setState(() => busy = true);
     try {
+      setState(() => liveCode = n);
       await db.ref('appConfig/update').set({
         'versionCode': n,
         'apkUrl': u,
@@ -55,6 +69,47 @@ class _UpdatePageState extends State<UpdatePage> {
       if (mounted) toast(context, 'Update publish ho gaya');
     } catch (e) {
       if (mounted) toast(context, 'Error: $e');
+    }
+    if (mounted) setState(() => busy = false);
+  }
+
+  /// Reads the newest GitHub Release (made by "Build User APK") and fills
+  /// version code + APK link automatically.
+  Future<void> fromGithub() async {
+    final r = repo.text.trim().replaceAll('https://github.com/', '');
+    if (!RegExp(r'^[\w.-]+/[\w.-]+$').hasMatch(r)) {
+      return toast(context, 'GitHub repo aise likho: username/repo-name');
+    }
+    setState(() => busy = true);
+    try {
+      final c = HttpClient();
+      final req = await c.getUrl(
+          Uri.parse('https://api.github.com/repos/$r/releases/latest'));
+      req.headers.set('User-Agent', 'onyx-owner');
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      c.close();
+      if (res.statusCode != 200) {
+        throw 'GitHub ne ${res.statusCode} diya (repo Public hai? naam sahi hai?)';
+      }
+      final j = jsonDecode(body) as Map;
+      final tag = '${j['tag_name'] ?? ''}'.replaceAll(RegExp(r'[^0-9]'), '');
+      String link = '';
+      for (final a in (j['assets'] as List? ?? [])) {
+        final n = '${a['name']}';
+        if (n.endsWith('.apk')) link = '${a['browser_download_url']}';
+      }
+      if (tag.isEmpty || link.isEmpty) throw 'Release me APK nahi mili';
+      await db.ref('appConfig/githubRepo').set(r);
+      if (mounted) {
+        setState(() {
+          code.text = tag;
+          url.text = link;
+        });
+        toast(context, 'Version $tag mil gaya. Ab Publish dabao.');
+      }
+    } catch (e) {
+      if (mounted) toast(context, '$e');
     }
     if (mounted) setState(() => busy = false);
   }
@@ -95,6 +150,26 @@ class _UpdatePageState extends State<UpdatePage> {
                 'GitHub Actions "Build User APK" chalane ke baad uski summary me '
                 'Version code aur APK link milega. Woh yahan daalo. Jin users ki '
                 'app ka build number isse kam hai unhe update karna padega.'),
+            if (liveCode != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.system_update),
+                  title: Text('Abhi live version: $liveCode'),
+                  subtitle: const Text('Isse purani app wale users ko update dikhega'),
+                ),
+              ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: repo,
+              decoration: const InputDecoration(
+                  labelText: 'GitHub repo (username/repo-name)',
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+                onPressed: busy ? null : fromGithub,
+                icon: const Icon(Icons.cloud_download),
+                label: const Text('GitHub se latest version bharo')),
             const SizedBox(height: 14),
             TextField(
               controller: code,
