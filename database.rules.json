@@ -190,6 +190,47 @@
     "onyxChat": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "voiceRooms": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$rid": {
+        ".write": "auth != null && (!data.exists() || data.child('meta/owner').val() === auth.uid)",
+        "meta": {
+          ".write": "auth != null && (!data.exists() || data.child('owner').val() === auth.uid)"
+        },
+        "seats": {
+          "$i": {
+            ".write": "auth != null"
+          }
+        },
+        "members": {
+          "$u": {
+            ".write": "auth != null && auth.uid === $u"
+          }
+        },
+        "watch": {
+          ".write": "auth != null"
+        }
+      }
+    },
+    "voiceChat": {
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$rid": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('voiceRooms').child($rid).child('meta/owner').val() === auth.uid",
+        "$m": {
+          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+        }
+      }
+    },
+    "voiceInvites": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$rid": {
+          ".write": "auth != null"
+        }
+      }
     }
   }
 }

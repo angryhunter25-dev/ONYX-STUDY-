@@ -14,12 +14,16 @@ class _UpdatePageState extends State<UpdatePage> {
   final code = TextEditingController();
   final url = TextEditingController();
   final notes = TextEditingController();
+  final agora = TextEditingController();
   bool force = true;
   bool busy = false;
 
   @override
   void initState() {
     super.initState();
+    db.ref('appConfig/agoraAppId').get().then((s) {
+      if (s.value != null && mounted) setState(() => agora.text = '${s.value}');
+    }).catchError((_) {});
     db.ref('appConfig/update').get().then((s) {
       final v = s.value;
       if (v is Map && mounted) {
@@ -53,6 +57,16 @@ class _UpdatePageState extends State<UpdatePage> {
       if (mounted) toast(context, 'Error: $e');
     }
     if (mounted) setState(() => busy = false);
+  }
+
+  Future<void> saveAgora() async {
+    try {
+      final v = agora.text.trim();
+      await db.ref('appConfig/agoraAppId').set(v.isEmpty ? null : v);
+      if (mounted) toast(context, v.isEmpty ? 'Agora App ID hata diya' : 'Agora App ID save ho gaya');
+    } catch (e) {
+      if (mounted) toast(context, 'Error: $e');
+    }
   }
 
   Future<void> clear() async {
@@ -121,6 +135,21 @@ class _UpdatePageState extends State<UpdatePage> {
             OutlinedButton(
                 onPressed: busy ? null : clear,
                 child: const Text('Update band karo')),
+            const Divider(height: 36),
+            const Text('Voice Rooms (Agora)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text(
+                'console.agora.io par free project banao ("Testing mode: App ID only") '
+                'aur uska App ID yahan daalo. Awaaz tabhi chalegi.'),
+            const SizedBox(height: 10),
+            TextField(
+              controller: agora,
+              decoration: const InputDecoration(
+                  labelText: 'Agora App ID', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(onPressed: saveAgora, child: const Text('Save App ID')),
           ],
         ),
       );

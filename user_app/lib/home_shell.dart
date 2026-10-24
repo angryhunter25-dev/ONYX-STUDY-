@@ -20,8 +20,6 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int i = 0;
-  int last = 0; // last normal tab (Rooms returns here if it cannot open)
-  bool opening = false;
 
   @override
   void initState() {
@@ -34,19 +32,6 @@ class _HomeShellState extends State<HomeShell> {
   void dispose() {
     Presence.stop();
     super.dispose();
-  }
-
-  Future<void> _openRooms() async {
-    if (opening) return;
-    opening = true;
-    setState(() => i = 2);
-    final r = await openRoomsScreen(context);
-    opening = false;
-    if (!mounted) return;
-    setState(() {
-      if (r != null && r >= 0 && r <= 5 && r != 2) last = r;
-      i = last;
-    });
   }
 
   Future<void> _checkClass() async {
@@ -78,16 +63,7 @@ class _HomeShellState extends State<HomeShell> {
       body: SafeArea(child: pages[i]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: i,
-        onDestinationSelected: (v) {
-          if (v == 2) {
-            _openRooms();
-          } else {
-            setState(() {
-              i = v;
-              last = v;
-            });
-          }
-        },
+        onDestinationSelected: (v) => setState(() => i = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),

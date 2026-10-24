@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'common.dart';
 import 'voice_room_page.dart';
 
-/// List of all live voice rooms + create new room.
+/// List of all live voice rooms + create / join by code + invites.
 class VoiceRoomsPage extends StatelessWidget {
   const VoiceRoomsPage({super.key});
 
@@ -45,62 +45,174 @@ class VoiceRoomsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _joinByCode(BuildContext context) async {
+    final ctl = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Code se join'),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Room code paste karo'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(c, ctl.text.trim()),
+              child: const Text('Join')),
+        ],
+      ),
+    );
+    if (code == null || code.isEmpty) return;
+    try {
+      final ok = (await rtdb.ref('voiceRooms/$code/meta').get()).exists;
+      if (!context.mounted) return;
+      if (!ok) {
+        msg(context, 'Room nahi mila');
+        return;
+      }
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: code)));
+    } catch (e) {
+      if (context.mounted) msg(context, 'Room nahi khula: $e');
+    }
+  }
+
+  Widget _invites(BuildContext context) => StreamBuilder<DatabaseEvent>(
+        stream: rtdb.ref('voiceInvites/$myUid').onValue,
+        builder: (c, s) {
+          final v = s.data?.snapshot.value;
+          if (v is! Map || v.isEmpty) return const SizedBox.shrink();
+          final cs = Theme.of(c).colorScheme;
+          return Column(children: [
+            for (final e in v.entries)
+              if (e.value is Map)
+                Card(
+                  color: cs.primaryContainer,
+                  margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: ListTile(
+                    leading: const Icon(Icons.mail),
+                    title: UserBuilder(
+                      uid: '${e.value['from']}',
+                      builder: (c, p) => Text(
+                          '${displayName(p)} ne "${e.value['name'] ?? 'room'}" me bulaya'),
+                    ),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        tooltip: 'Hatao',
+                        icon: const Icon(Icons.close),
+                        onPressed: () =>
+                            rtdb.ref('voiceInvites/$myUid/${e.key}').remove(),
+                      ),
+                      FilledButton(
+                        onPressed: () async {
+                          final id = '${e.key}';
+                          await rtdb.ref('voiceInvites/$myUid/$id').remove();
+                          if (!c.mounted) return;
+                          final ok =
+                              (await rtdb.ref('voiceRooms/$id/meta').get()).exists;
+                          if (!c.mounted) return;
+                          if (!ok) {
+                            msg(c, 'Ye room band ho chuka hai');
+                            return;
+                          }
+                          Navigator.push(c,
+                              MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: id)));
+                        },
+                        child: const Text('Join'),
+                      ),
+                    ]),
+                  ),
+                ),
+          ]);
+        },
+      );
+
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Voice Rooms')),
+        appBar: AppBar(
+          title: const Text('Voice Rooms'),
+          actions: [
+            IconButton(
+                tooltip: 'Code se join',
+                onPressed: () => _joinByCode(context),
+                icon: const Icon(Icons.keyboard)),
+          ],
+        ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _create(context),
           icon: const Icon(Icons.add),
           label: const Text('Room banao'),
         ),
-        body: StreamBuilder<DatabaseEvent>(
-          stream: rtdb.ref('voiceRooms').onValue,
-          builder: (c, s) {
-            if (!s.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final v = s.data!.snapshot.value;
-            final rooms = <MapEntry<String, Map>>[];
-            if (v is Map) {
-              v.forEach((k, r) {
-                if (r is Map && r['meta'] is Map) {
-                  rooms.add(MapEntry('$k', r));
+        body: Column(children: [
+          _invites(context),
+          Expanded(
+            child: StreamBuilder<DatabaseEvent>(
+              stream: rtdb.ref('voiceRooms').onValue,
+              builder: (c, s) {
+                if (s.hasError) {
+                  return Center(
+                      child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Rooms load nahi hue: ${s.error}',
+                        textAlign: TextAlign.center),
+                  ));
                 }
-              });
-            }
-            rooms.sort((a, b) => ((b.value['meta']['createdAt'] ?? 0) as num)
-                .compareTo((a.value['meta']['createdAt'] ?? 0) as num));
-            if (rooms.isEmpty) {
-              return const Center(child: Text('Abhi koi room nahi. Pehla room banao!'));
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
-              itemCount: rooms.length,
-              itemBuilder: (c, i) {
-                final id = rooms[i].key;
-                final r = rooms[i].value;
-                final meta = r['meta'] as Map;
-                final seats = r['seats'] is Map ? (r['seats'] as Map).length : 0;
-                final listeners = r['members'] is Map ? (r['members'] as Map).length : 0;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.mic)),
-                    title: Text('${meta['name']}',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: UserBuilder(
-                      uid: '${meta['owner']}',
-                      builder: (c, p) => Text(
-                          'Host: ${displayName(p)}  •  $seats/8 seats  •  $listeners online'),
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: id))),
-                  ),
+                if (!s.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final v = s.data!.snapshot.value;
+                final rooms = <MapEntry<String, Map>>[];
+                if (v is Map) {
+                  v.forEach((k, r) {
+                    if (r is Map && r['meta'] is Map) {
+                      rooms.add(MapEntry('$k', r));
+                    }
+                  });
+                }
+                rooms.sort((a, b) =>
+                    ((b.value['meta']['createdAt'] ?? 0) as num)
+                        .compareTo((a.value['meta']['createdAt'] ?? 0) as num));
+                if (rooms.isEmpty) {
+                  return const Center(
+                      child: Text('Abhi koi room nahi. Pehla room banao!'));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+                  itemCount: rooms.length,
+                  itemBuilder: (c, i) {
+                    final id = rooms[i].key;
+                    final r = rooms[i].value;
+                    final meta = r['meta'] as Map;
+                    final seats = r['seats'] is Map ? (r['seats'] as Map).length : 0;
+                    final listeners =
+                        r['members'] is Map ? (r['members'] as Map).length : 0;
+                    final watching = r['watch'] is Map;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                            child: Icon(watching ? Icons.ondemand_video : Icons.mic)),
+                        title: Text('${meta['name']}',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: UserBuilder(
+                          uid: '${meta['owner']}',
+                          builder: (c, p) => Text(
+                              'Host: ${displayName(p)}  •  $seats/8 seats  •  $listeners online'),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => VoiceRoomPage(roomId: id))),
+                      ),
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
+            ),
+          ),
+        ]),
       );
 }
