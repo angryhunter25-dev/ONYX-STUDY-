@@ -46,21 +46,8 @@ jobs:
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle || true
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts || true
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <application android:usesCleartextTraffic="true"#' $M
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.BLUETOOTH"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n    <application android:usesCleartextTraffic="true"#' $M
           sed -i 's#android:label="[^"]*"#android:label="ONYX"#' $M
-          sed -i 's#</application>#    <activity android:name=".RoomActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout" android:windowSoftInputMode="adjustResize" android:theme="@android:style/Theme.DeviceDefault.NoActionBar"/>\n    </application>#' $M
-
-          # --- Voice room (native screen + web UI) ---
-          find android/app/src/main -name 'MainActivity.*' -delete
-          PKG=android/app/src/main/kotlin/com/onyx/user_app
-          mkdir -p $PKG android/app/src/main/assets
-          cp native/MainActivity.kt native/RoomActivity.kt $PKG/
-          cp native/app.html native/login.mp3 android/app/src/main/assets/
-          if [ -f android/app/build.gradle.kts ]; then
-            printf '\ndependencies {\n    implementation("androidx.webkit:webkit:1.11.0")\n}\n' >> android/app/build.gradle.kts
-          else
-            printf "\ndependencies {\n    implementation 'androidx.webkit:webkit:1.11.0'\n}\n" >> android/app/build.gradle
-          fi
 
       # Old plugins (e.g. agora_rtc_engine) compile against Android 31 but need 34+.
       # This Gradle init script raises compileSdk to 36 for every plugin module below 36.
