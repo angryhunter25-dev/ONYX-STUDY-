@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -21,6 +23,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
@@ -37,6 +40,62 @@ class RoomActivity : Activity() {
     private var cvCb: WebChromeClient.CustomViewCallback? = null
     private val rect = DoubleArray(4)
     private var pendingPerm: PermissionRequest? = null
+    private lateinit var bar: LinearLayout
+    private var kbOpen = false
+
+    // ONYX bottom bar: index must match the Flutter NavigationBar order
+    private val tabs = arrayOf("🏠" to "Home", "💬" to "Chats", "🎤" to "Rooms", "➕" to "Add", "👤" to "Profile", "⚙" to "More")
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private fun col(key: String, def: Int): Int =
+        try { Color.parseColor(intent.getStringExtra(key)) } catch (e: Exception) { def }
+
+    private fun buildBar() {
+        val navBg = col("navBg", 0xFF1D1B20.toInt())
+        val navFg = col("navFg", 0xFFCAC4D0.toInt())
+        val navSel = col("navSel", 0xFFFFFFFF.toInt())
+        val ind = col("ind", 0xFF4A4458.toInt())
+        bar = LinearLayout(this)
+        bar.orientation = LinearLayout.HORIZONTAL
+        bar.setBackgroundColor(navBg)
+        tabs.forEachIndexed { i, p ->
+            val cell = LinearLayout(this)
+            cell.orientation = LinearLayout.VERTICAL
+            cell.gravity = Gravity.CENTER
+            cell.setPadding(0, dp(10), 0, dp(10))
+            val ic = TextView(this)
+            ic.text = p.first
+            ic.textSize = 18f
+            ic.gravity = Gravity.CENTER
+            ic.setPadding(dp(18), dp(3), dp(18), dp(3))
+            if (i == 2) {
+                val g = GradientDrawable()
+                g.cornerRadius = dp(16).toFloat()
+                g.setColor(ind)
+                ic.background = g
+            }
+            val lb = TextView(this)
+            lb.text = p.second
+            lb.textSize = 11f
+            lb.gravity = Gravity.CENTER
+            lb.setTextColor(if (i == 2) navSel else navFg)
+            cell.addView(ic)
+            cell.addView(lb)
+            cell.setOnClickListener { if (i != 2) finishTab(i) }
+            bar.addView(cell, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+    }
+
+    private fun updBar() {
+        bar.visibility = if (fs || cv != null || kbOpen) View.GONE else View.VISIBLE
+    }
+
+    @Suppress("DEPRECATION")
+    private fun finishTab(t: Int) {
+        setResult(RESULT_OK, Intent().putExtra("tab", t))
+        finish()
+        overridePendingTransition(0, 0)
+    }
 
     private val syncJs = """(function(){if(window.__sy)return;window.__sy=1;var ap=false;
 function V(){return document.querySelector('video')}
@@ -50,11 +109,13 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         root = FrameLayout(this)
+        root.setBackgroundColor(col("bg", Color.BLACK))
         setContentView(root)
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this)).build()
 
         ui = WebView(this)
+        ui.setBackgroundColor(col("bg", Color.BLACK))
         ui.settings.javaScriptEnabled = true
         ui.settings.domStorageEnabled = true
         ui.settings.mediaPlaybackRequiresUserGesture = false
@@ -106,6 +167,7 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
                 cv = v
                 cvCb = cb
                 root.addView(v, FrameLayout.LayoutParams(-1, -1))
+                updBar()
                 immersive(true)
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             }
@@ -131,9 +193,25 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
         exitBtn.visibility = View.GONE
         exitBtn.setOnClickListener { setFull(false) }
 
-        root.addView(ui, FrameLayout.LayoutParams(-1, -1))
+        buildBar()
+        val main = LinearLayout(this)
+        main.orientation = LinearLayout.VERTICAL
+        main.addView(ui, LinearLayout.LayoutParams(-1, 0, 1f))
+        main.addView(bar, LinearLayout.LayoutParams(-1, -2))
+        root.addView(main, FrameLayout.LayoutParams(-1, -1))
         root.addView(br, FrameLayout.LayoutParams(1, 1))
         root.addView(exitBtn, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END))
+        @Suppress("DEPRECATION")
+        root.setOnApplyWindowInsetsListener { _, ins ->
+            bar.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
+            ins
+        }
+        root.viewTreeObserver.addOnGlobalLayoutListener {
+            val r = Rect()
+            root.getWindowVisibleDisplayFrame(r)
+            val open = root.rootView.height - r.bottom > dp(150)
+            if (open != kbOpen) { kbOpen = open; updBar() }
+        }
         ui.loadUrl("https://appassets.androidplatform.net/assets/app.html")
     }
 
@@ -155,6 +233,7 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
 
     private fun setFull(on: Boolean) {
         fs = on
+        updBar()
         if (on) {
             br.layoutParams = FrameLayout.LayoutParams(-1, -1)
             br.visibility = View.VISIBLE
@@ -177,6 +256,7 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
         cv = null
         cvCb?.onCustomViewHidden()
         cvCb = null
+        updBar()
         if (!fs) {
             immersive(false)
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -190,6 +270,15 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
     }
 
     inner class UiBridge {
+        @JavascriptInterface
+        fun cfg(): String {
+            val o = JSONObject()
+            fun put(k: String, ek: String = k) { intent.getStringExtra(ek)?.let { o.put(k, it) } }
+            put("email"); put("pass"); put("username"); put("photo")
+            put("bg"); put("card"); put("tx"); put("ac"); put("mut"); put("onac")
+            return o.toString()
+        }
+
         @JavascriptInterface
         fun setRect(x: Double, y: Double, w: Double, h: Double) = runOnUiThread {
             rect[0] = x; rect[1] = y; rect[2] = w; rect[3] = h
@@ -268,7 +357,9 @@ window.__cmd=function(p,t){var v=V();if(!v)return;ap=true;if(Math.abs(v.currentT
             cv != null -> hideCv()
             fs -> setFull(false)
             br.visibility == View.VISIBLE && br.canGoBack() -> br.goBack()
-            else -> super.onBackPressed()
+            else -> ui.evaluateJavascript("(typeof cur!=='undefined'&&cur)?(leave(),1):0") { r ->
+                if (r != "1") finishTab(-1)
+            }
         }
     }
 }

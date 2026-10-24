@@ -8,7 +8,7 @@ body.dark{--bg:#2a0a1a;--card:#4a1230;--tx:#ffeef5;--mut:#e8a3c0}
 @keyframes rise{0%{transform:translateY(0) scale(.8);opacity:0}12%{opacity:.55}100%{transform:translateY(-115vh) scale(1.25) rotate(18deg);opacity:0}}
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
 html,body{height:100%}body{background:var(--bg);color:var(--tx)}
-button,.btn{display:block;text-align:center;text-decoration:none;background:var(--ac);color:#fff;border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:600;width:100%;margin-top:10px}
+button,.btn{display:block;text-align:center;text-decoration:none;background:var(--ac);color:var(--onac,#fff);border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:600;width:100%;margin-top:10px}
 .g{background:transparent!important;color:var(--ac)!important;border:1px solid var(--ac)!important}
 input,textarea{width:100%;padding:11px;margin-top:8px;border-radius:10px;border:1px solid var(--mut);background:var(--card);color:var(--tx);font-size:15px}
 #auth{max-width:380px;margin:auto;padding:40px 20px;text-align:center}#sf{display:none}
@@ -47,7 +47,7 @@ video{width:100%;border-radius:14px;background:#000;aspect-ratio:16/9;object-fit
 .chat{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--card);border-radius:14px;padding:8px}
 .msgs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:4px}
 .msg{max-width:78%;padding:7px 10px;border-radius:12px;font-size:14px;word-break:break-word;display:flex;flex-direction:column}
-.msg.me{align-self:flex-end;background:var(--ac);color:#fff;border-bottom-right-radius:3px}
+.msg.me{align-self:flex-end;background:var(--ac);color:var(--onac,#fff);border-bottom-right-radius:3px}
 .msg.ot{align-self:flex-start;background:#8882;border-bottom-left-radius:3px}
 .msg .tm{font-size:10px;opacity:.7;align-self:flex-end;margin-top:2px}.msg .nm{font-size:11px;color:var(--ac);font-weight:700}
 .inrow{display:flex;gap:6px;margin-top:6px}.inrow input{margin:0}.inrow button{width:auto;margin:0;padding:0 16px}
@@ -58,6 +58,7 @@ video{width:100%;border-radius:14px;background:#000;aspect-ratio:16/9;object-fit
 nav b{position:relative}#cb{position:absolute;top:5px;right:24%;display:none;width:10px;height:10px;border-radius:50%;background:#22c55e}
 .acts{display:flex;gap:6px}.acts button{padding:7px 10px;font-size:13px}.dng{background:#ef4444!important}
 #ask{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#0008;align-items:center;justify-content:center;z-index:20}
+body.nat nav,body.nat #hearts{display:none!important}body.nat #pages{padding-bottom:12px}
 </style></head><body>
 <div id="toast"></div>
 
@@ -133,11 +134,14 @@ nav b{position:relative}#cb{position:absolute;top:5px;right:24%;display:none;wid
 const ANIME="";                                // (optional) direct .mp4 link; ya Firebase: watch/config/homeVideo
 const TG="https://t.me/YOUR_TELEGRAM_USERNAME"; // tumhara Telegram
 // ====================================
-firebase.initializeApp({apiKey:"AIzaSyDuElrxG_VZDQ18bUKxHPgfEQLHRaTvmwU",authDomain:"esports-app-2187b.firebaseapp.com",databaseURL:"https://esports-app-2187b-default-rtdb.firebaseio.com",projectId:"esports-app-2187b",appId:"1:598600940260:web:12580fa20aba4b93720af1"});
+firebase.initializeApp({apiKey:"AIzaSyATXwAsKBuSbeKrm68WaHdK8KRi1AFnoQk",authDomain:"onyx-3127f.firebaseapp.com",databaseURL:"https://onyx-3127f-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"onyx-3127f",appId:"1:175164476550:web:3d753d3a47f7c4ae5b5507"});
 const A=firebase.auth(),W=firebase.database().ref('watch'),$=i=>document.getElementById(i);
 let bref=null,bs=null,yp=null,yready=false,lastV=null,applying=false,prev=0,off=0,me=null,my={},cur=null,room={},rref=null,friends={},tt;
 const inviteRoom=new URLSearchParams(location.search).get('room');
+window.addEventListener('load',()=>{if(window.autoLogin)autoLogin()});
 const NAT=!!window.Android;$('tg').href=TG;
+let CFG=null;try{if(NAT)CFG=JSON.parse(Android.cfg())}catch(e){}
+if(CFG){document.body.classList.add('nat');const b=document.body.style;[['bg','--bg'],['card','--card'],['tx','--tx'],['ac','--ac'],['mut','--mut'],['onac','--onac']].forEach(([k,v])=>{if(CFG[k])b.setProperty(v,CFG[k])})}
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2500)}
 function theme(d){document.body.classList.toggle('dark',d);$('dk').checked=d;try{localStorage.dark=d?1:''}catch(e){}}
 try{theme(localStorage.dark!=='')}catch(e){theme(true)}
@@ -149,7 +153,22 @@ async function signup(){const u=$('su').value.trim().toLowerCase();if(!/^[a-z0-9
 if((await W.child('usernames/'+u).once('value')).exists())return toast('Ye username le liya gaya hai');
 try{const c=await A.createUserWithEmailAndPassword($('se').value.trim(),$('sp').value);
 await W.child('users/'+c.user.uid).set({username:u});await W.child('usernames/'+u).set(c.user.uid)}catch(e){toast(e.message)}}
-A.onAuthStateChanged(async u=>{me=u;songCtl(!u);$('auth').style.display=u?'none':'block';$('app').style.display=u?'flex':'none';if(!u)return;
+// ---- ONYX user -> room account (no login screen inside ONYX app) ----
+async function syncProfile(u){if(!CFG)return;try{const r=W.child('users/'+u.uid),v=(await r.once('value')).val()||{};
+if(!v.username){let n=String(CFG.username||'user').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,20);if(n.length<3)n=(n+'user').slice(0,20);
+if((await W.child('usernames/'+n).once('value')).exists())n=(n.slice(0,15)+Math.floor(1000+Math.random()*9000)).slice(0,20);
+await r.update({username:n});await W.child('usernames/'+n).set(u.uid)}
+if(!v.photo&&CFG.photo)await r.child('photo').set(CFG.photo)}catch(e){}}
+function autoStatus(t,retry){const a=$('auth');a.style.display='block';a.innerHTML='<h3 style="color:var(--ac)">Rooms</h3><p id="ast" style="margin:10px 0"></p><button id="art" style="display:none" onclick="location.reload()">Dobara try karo</button>';$('ast').textContent=t;$('art').style.display=retry?'block':'none'}
+async function autoLogin(){if(!CFG||!CFG.email)return;autoStatus('Rooms connect ho raha hai...');
+try{const first=await new Promise(ok=>{const un=A.onAuthStateChanged(x=>{un();ok(x)})});
+if(first&&first.email&&first.email.toLowerCase()===CFG.email.toLowerCase())return;
+if(first){await A.signOut();location.reload();return}
+try{await A.signInWithEmailAndPassword(CFG.email,CFG.pass)}
+catch(e){if(['auth/user-not-found','auth/invalid-credential','auth/invalid-login-credentials'].includes(e.code))await A.createUserWithEmailAndPassword(CFG.email,CFG.pass);else throw e}
+}catch(e){autoStatus('Connect nahi hua: '+(e.message||e),true)}}
+A.onAuthStateChanged(async u=>{me=u;songCtl(!u);if(CFG&&!u){autoStatus('Rooms connect ho raha hai...')}else{$('auth').style.display=u?'none':'block'}$('app').style.display=u?'flex':'none';if(!u)return;
+if(CFG){await syncProfile(u);tab(1)}
 W.child('users/'+u.uid).on('value',s=>{my=s.val()||{};$('pn').textContent=my.username||'';$('pu').textContent='@'+(my.username||'');$('hi').textContent='Hi '+(my.username||'')+' 💖';setAv($('pav'),my.photo,my.username);if(document.activeElement!==$('bio'))$('bio').value=my.bio||'';renderSeats()});
 W.child('posts/'+u.uid).on('value',s=>renderGrid($('myposts'),s.val()||{},true,u.uid));
 W.child('config/telegram').on('value',s=>{if(s.val())$('tg').href=s.val()});
@@ -256,7 +275,7 @@ async function getU(id){if(!uc[id]||Date.now()-uc[id].t>60000){const v=(await W.
 
 // ---- Login song ----
 let sOn=true;
-function songCtl(play){const a=$('lsong');if(!a)return;if(play&&sOn){a.play().catch(()=>{document.addEventListener('click',()=>{if(!me&&sOn)a.play().catch(()=>{})},{once:true})})}else a.pause()}
+function songCtl(play){if(NAT)return;const a=$('lsong');if(!a)return;if(play&&sOn){a.play().catch(()=>{document.addEventListener('click',()=>{if(!me&&sOn)a.play().catch(()=>{})},{once:true})})}else a.pause()}
 function songToggle(){sOn=!sOn;$('sb').textContent=sOn?'🔊 Song':'🔇 Song';songCtl(!me)}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)$('lsong').pause();else songCtl(!me)});
 

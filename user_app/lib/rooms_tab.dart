@@ -1,68 +1,83 @@
+import 'dart:math';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// "Rooms" tab. The voice room itself is a native screen (RoomActivity) that
-/// has voice, watch-together browser, room chat and invite sharing.
+const _ch = MethodChannel('onyx/rooms');
+
+String _hex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+String _randomKey() {
+  const chars =
+      'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  final r = Random.secure();
+  return List.generate(32, (_) => chars[r.nextInt(chars.length)]).join();
+}
+
+/// Opens the voice room screen inside ONYX. The room account is created
+/// automatically from the logged-in ONYX user (no second login).
+/// Returns the ONYX tab the user tapped in the room's bottom bar
+/// (0-5), -1 if they just went back, or null if it could not open.
+Future<int?> openRoomsScreen(BuildContext context) async {
+  final u = FirebaseAuth.instance.currentUser;
+  final msg = ScaffoldMessenger.of(context);
+  if (u == null) return null;
+  final db = FirebaseDatabase.instance;
+  try {
+    // Private per-user secret (only this user and admins can read it).
+    final kref = db.ref('users/${u.uid}/private/roomKey');
+    final ks = await kref.get();
+    var key = ks.value is String ? ks.value as String : '';
+    if (key.length < 16) {
+      key = _randomKey();
+      await kref.set(key);
+    }
+    var name = '', photo = '';
+    try {
+      final p = await db.ref('users/${u.uid}/profile').get();
+      final v = p.value;
+      if (v is Map) {
+        name = '${v['username'] ?? ''}';
+        photo = '${v['photo'] ?? ''}';
+      }
+    } catch (_) {}
+    if (!context.mounted) return null;
+    final cs = Theme.of(context).colorScheme;
+    final args = <String, String>{
+      'email': '${u.uid.toLowerCase()}@rooms.onyx.app',
+      'pass': key,
+      'username': name,
+      'photo': photo.length <= 60000 ? photo : '',
+      'bg': _hex(cs.surface),
+      'card': _hex(cs.surfaceContainerHigh),
+      'tx': _hex(cs.onSurface),
+      'ac': _hex(cs.primary),
+      'mut': _hex(cs.onSurfaceVariant),
+      'onac': _hex(cs.onPrimary),
+      'navBg': _hex(cs.surfaceContainer),
+      'navFg': _hex(cs.onSurfaceVariant),
+      'navSel': _hex(cs.onSurface),
+      'ind': _hex(cs.secondaryContainer),
+    };
+    return await _ch.invokeMethod<int>('open', args);
+  } catch (e) {
+    msg.showSnackBar(SnackBar(content: Text('Rooms nahi khul paaya: $e')));
+    return null;
+  }
+}
+
+/// Placeholder shown for a moment while the room screen opens.
 class RoomsTab extends StatelessWidget {
   const RoomsTab({super.key});
-
-  static const _ch = MethodChannel('onyx/rooms');
-
-  Future<void> _open(BuildContext context) async {
-    try {
-      await _ch.invokeMethod('open');
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Voice room abhi nahi khul paaya')));
-      }
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    Widget feature(IconData i, String t, String s) => ListTile(
-          leading: Icon(i, color: cs.primary),
-          title: Text(t),
-          subtitle: Text(s),
-        );
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const SizedBox(height: 8),
-        Text('Rooms',
-            style: Theme.of(context)
-                .textTheme
-                .headlineMedium
-                ?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        const Text('Dosto ke saath voice room, saath me screen dekho.'),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(children: [
-              feature(Icons.mic, 'Live voice', 'Mic se dost se baat karo'),
-              feature(Icons.ondemand_video, 'Screen / video together',
-                  'YouTube ya website saath dekho, sync me'),
-              feature(Icons.chat_bubble_outline, 'Room chat',
-                  'Dekhte dekhte chat karo'),
-              feature(Icons.share, 'Invite link',
-                  'Room code share karke dost ko bulao'),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => _open(context),
-          icon: const Icon(Icons.meeting_room),
-          label: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 6),
-            child: Text('Open Voice Room'),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => const Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 14),
+          Text('Rooms khul raha hai...'),
+        ]),
+      );
 }

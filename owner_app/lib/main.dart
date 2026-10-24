@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'firebase_options.dart';
 import 'import_page.dart';
 import 'update_page.dart';
+import 'rooms_admin_page.dart';
 import 'users_page.dart';
 
 final db = FirebaseDatabase.instance;
@@ -224,6 +225,11 @@ class _HomeState extends State<Home> {
     return Scaffold(
       appBar: AppBar(title: const Text('ONYX Owner'), actions: [
         IconButton(
+            tooltip: 'Rooms',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const RoomsAdminPage())),
+            icon: const Icon(Icons.meeting_room)),
+        IconButton(
             tooltip: 'App update',
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const UpdatePage())),
@@ -321,82 +327,194 @@ class QuestionsTab extends StatefulWidget {
 
 class _QuestionsTabState extends State<QuestionsTab> {
   String? filter;
+  final Set<String> sel = {};
+  bool get selecting => sel.isNotEmpty;
+
+  Future<void> deleteSelected(BuildContext c) async {
+    final n = sel.length;
+    if (!await confirm(c, '$n sawal delete karne hain?')) return;
+    try {
+      // one single write: {questions/<id>: null, ...}
+      await db.ref('questions').update({for (final k in sel) k: null});
+      if (mounted) {
+        setState(sel.clear);
+        toast(context, '$n sawal delete ho gaye');
+      }
+    } catch (e) {
+      if (mounted) toast(context, 'Error: $e');
+    }
+  }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        floatingActionButton: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            FloatingActionButton.extended(
-              heroTag: null,
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ImportPage())),
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Import'),
-            ),
-            const SizedBox(height: 12),
-            FloatingActionButton(
-              heroTag: null,
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const QuestionEditor())),
-              child: const Icon(Icons.add),
-            ),
-          ],
-        ),
-        body: Column(children: [
-          Live(
-            path: 'subjects',
-            builder: (c, subs) => Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: DropdownButton<String?>(
-                isExpanded: true,
-                value: subs.containsKey(filter) ? filter : null,
-                hint: const Text('All subjects'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                      value: null, child: Text('All subjects')),
-                  ...subs.entries.map((e) => DropdownMenuItem<String?>(
-                      value: e.key, child: Text('${e.value['name'] ?? e.key}'))),
-                ],
-                onChanged: (v) => setState(() => filter = v),
+  Widget build(BuildContext context) => PopScope(
+        canPop: !selecting,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && selecting) setState(sel.clear);
+        },
+        child: Scaffold(
+          floatingActionButton: selecting
+              ? null
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const ImportPage())),
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Import'),
+                    ),
+                    const SizedBox(height: 12),
+                    FloatingActionButton(
+                      heroTag: null,
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const QuestionEditor())),
+                      child: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+          body: Column(children: [
+            Live(
+              path: 'subjects',
+              builder: (c, subs) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: DropdownButton<String?>(
+                  isExpanded: true,
+                  value: subs.containsKey(filter) ? filter : null,
+                  hint: const Text('All subjects'),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                        value: null, child: Text('All subjects')),
+                    ...subs.entries.map((e) => DropdownMenuItem<String?>(
+                        value: e.key,
+                        child: Text('${e.value['name'] ?? e.key}'))),
+                  ],
+                  onChanged: (v) => setState(() {
+                    filter = v;
+                    sel.clear();
+                  }),
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Live(
-              path: 'questions',
-              builder: (c, m) {
-                final list = m.entries
-                    .where((e) => filter == null || e.value['subject'] == filter)
-                    .toList();
-                if (list.isEmpty) {
-                  return const Center(child: Text('Koi sawal nahi. + dabao.'));
-                }
-                return ListView(
-                    children: list
-                        .map((e) => ListTile(
-                              title: Text('${e.value['q'] ?? ''}',
-                                  maxLines: 2, overflow: TextOverflow.ellipsis),
-                              subtitle: Text('${e.value['subject'] ?? ''}'),
-                              onTap: () => Navigator.push(
-                                  c,
-                                  MaterialPageRoute(
-                                      builder: (_) => QuestionEditor(
-                                          qKey: e.key, data: e.value))),
-                              trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline),
-                                  onPressed: () async {
-                                    if (await confirm(c, 'Delete question?')) {
-                                      db.ref('questions/${e.key}').remove();
-                                    }
-                                  }),
-                            ))
-                        .toList());
-              },
+            Expanded(
+              child: Live(
+                path: 'questions',
+                builder: (c, m) {
+                  final list = m.entries
+                      .where(
+                          (e) => filter == null || e.value['subject'] == filter)
+                      .toList();
+                  if (list.isEmpty) {
+                    return const Center(child: Text('Koi sawal nahi. + dabao.'));
+                  }
+                  final allIds = list.map((e) => e.key).toSet();
+                  final allSelected =
+                      allIds.isNotEmpty && sel.containsAll(allIds);
+                  return Column(children: [
+                    if (selecting)
+                      Material(
+                        color: Theme.of(c).colorScheme.secondaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          child: Row(children: [
+                            IconButton(
+                                tooltip: 'Cancel',
+                                onPressed: () => setState(sel.clear),
+                                icon: const Icon(Icons.close)),
+                            Text('${sel.length} selected',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            TextButton(
+                                onPressed: () => setState(() {
+                                      if (allSelected) {
+                                        sel.clear();
+                                      } else {
+                                        sel.addAll(allIds);
+                                      }
+                                    }),
+                                child: Text(
+                                    allSelected ? 'Unselect all' : 'Select all')),
+                            IconButton(
+                                tooltip: 'Delete selected',
+                                onPressed: () => deleteSelected(c),
+                                icon: const Icon(Icons.delete,
+                                    color: Colors.redAccent)),
+                          ]),
+                        ),
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text('Delete ke liye sawal ko dabake pakdo',
+                            style: TextStyle(fontSize: 12)),
+                      ),
+                    Expanded(
+                      child: ListView(
+                          children: list
+                              .map((e) => ListTile(
+                                    selected: sel.contains(e.key),
+                                    selectedTileColor: Theme.of(c)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.15),
+                                    leading: selecting
+                                        ? Checkbox(
+                                            value: sel.contains(e.key),
+                                            onChanged: (_) => setState(() {
+                                                  sel.contains(e.key)
+                                                      ? sel.remove(e.key)
+                                                      : sel.add(e.key);
+                                                }))
+                                        : null,
+                                    title: Text('${e.value['q'] ?? ''}',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis),
+                                    subtitle: Text('${e.value['subject'] ?? ''}'),
+                                    onLongPress: () =>
+                                        setState(() => sel.add(e.key)),
+                                    onTap: () {
+                                      if (selecting) {
+                                        setState(() {
+                                          sel.contains(e.key)
+                                              ? sel.remove(e.key)
+                                              : sel.add(e.key);
+                                        });
+                                      } else {
+                                        Navigator.push(
+                                            c,
+                                            MaterialPageRoute(
+                                                builder: (_) => QuestionEditor(
+                                                    qKey: e.key,
+                                                    data: e.value)));
+                                      }
+                                    },
+                                    trailing: selecting
+                                        ? null
+                                        : IconButton(
+                                            icon: const Icon(
+                                                Icons.delete_outline),
+                                            onPressed: () async {
+                                              if (await confirm(
+                                                  c, 'Delete question?')) {
+                                                db
+                                                    .ref('questions/${e.key}')
+                                                    .remove();
+                                              }
+                                            }),
+                                  ))
+                              .toList()),
+                    ),
+                  ]);
+                },
+              ),
             ),
-          ),
-        ]),
+          ]),
+        ),
       );
 }
 
