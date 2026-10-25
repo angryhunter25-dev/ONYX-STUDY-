@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 import 'add_tab.dart';
+import 'animated_bg.dart';
 import 'chats_tab.dart';
 import 'home_tab.dart';
 import 'presence.dart';
@@ -60,7 +61,13 @@ class _HomeShellState extends State<HomeShell> {
       const SettingsTab(),
     ];
     return Scaffold(
-      body: SafeArea(child: pages[i]),
+      body: AnimatedTabBackground(
+        index: i,
+        child: Theme(
+          data: Theme.of(context).copyWith(scaffoldBackgroundColor: Colors.transparent),
+          child: SafeArea(child: pages[i]),
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: i,
         onDestinationSelected: (v) => setState(() => i = v),
