@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'common.dart';
 import 'profile_tab.dart';
 import 'voice_config.dart';
+import 'room_session.dart';
 import 'shared_browser.dart';
 import 'watch_player.dart';
 
@@ -543,8 +544,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      onPopInvokedWithResult: (_, __) => _leaveAll(),
+    return Material(
       child: StreamBuilder<DatabaseEvent>(
         stream: room.onValue,
         builder: (c, s) {
@@ -554,9 +554,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           final v = s.data!.snapshot.value;
           if (v is! Map || v['meta'] is! Map) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && Navigator.canPop(context)) {
-                Navigator.pop(context);
+              if (mounted) {
                 msg(context, 'Room closed');
+                RoomSession.exit();
               }
             });
             return const Scaffold(body: SizedBox.shrink());
@@ -591,9 +591,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
             } else {
               _noHostTimer ??= Timer(Duration(seconds: order.isEmpty ? 10 : 25), () {
                 _noHostTimer = null;
-                if (mounted && Navigator.canPop(context)) {
-                  Navigator.pop(context);
+                if (mounted) {
                   msg(context, 'Room closed because the host left');
+                  RoomSession.exit();
                 }
               });
             }
@@ -622,8 +622,16 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           final cs = Theme.of(context).colorScheme;
           return Scaffold(
             appBar: AppBar(
+              leading: IconButton(
+                  tooltip: 'Minimize',
+                  onPressed: RoomSession.minimize,
+                  icon: const Icon(Icons.keyboard_arrow_down, size: 30)),
               title: Text('${meta['name']}'),
               actions: [
+                IconButton(
+                    tooltip: 'Leave room',
+                    onPressed: RoomSession.exit,
+                    icon: const Icon(Icons.logout)),
                 IconButton(
                     tooltip: 'Invite',
                     onPressed: () => _invite('${meta['name']}'),
@@ -686,11 +694,16 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                           icon: const Icon(Icons.ondemand_video),
                           label: Text(hasVideo ? 'Change link' : 'Video link'),
                         ),
+                        TextButton.icon(
+                          onPressed: () => _invite('${meta['name']}'),
+                          icon: const Icon(Icons.person_add_alt_1),
+                          label: const Text('Invite'),
+                        ),
                         if (hasVideo || isWeb)
                           TextButton.icon(
                             onPressed: _clearWatch,
                             icon: const Icon(Icons.close),
-                            label: const Text('Hatao'),
+                            label: const Text('Remove'),
                           ),
                       ]),
                       // seats

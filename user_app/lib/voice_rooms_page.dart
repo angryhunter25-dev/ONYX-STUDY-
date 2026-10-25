@@ -4,6 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 import 'common.dart';
+import 'room_session.dart';
 import 'voice_room_page.dart';
 
 /// List of all live voice rooms + create / join by code + invites.
@@ -60,8 +61,7 @@ class VoiceRoomsPage extends StatelessWidget {
         'hosts': {myUid: true},
       });
       if (context.mounted) {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: ref.key!)));
+        RoomSession.open(context, ref.key!);
       }
     } catch (e) {
       if (context.mounted) msg(context, 'Could not create room: $e');
@@ -95,8 +95,7 @@ class VoiceRoomsPage extends StatelessWidget {
         msg(context, 'Room not found');
         return;
       }
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: code)));
+      RoomSession.open(context, code);
     } catch (e) {
       if (context.mounted) msg(context, 'Could not open room: $e');
     }
@@ -140,8 +139,7 @@ class VoiceRoomsPage extends StatelessWidget {
                             msg(c, 'This room is already closed');
                             return;
                           }
-                          Navigator.push(c,
-                              MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: id)));
+                          RoomSession.open(c, id);
                         },
                         child: const Text('Join'),
                       ),
@@ -230,10 +228,7 @@ class VoiceRoomsPage extends StatelessWidget {
                               'Host: ${displayName(p)}  •  $seats/8 seats  •  $listeners online'),
                         ),
                         trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => VoiceRoomPage(roomId: id))),
+                        onTap: () => RoomSession.open(context, id),
                       ),
                     );
                   },
