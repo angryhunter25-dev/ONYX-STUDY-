@@ -25,7 +25,7 @@ const String _html = r'''<!DOCTYPE html><html><head><meta charset="utf-8">
 #yt,#vd{position:absolute;left:0;top:0;width:100%;height:100%;border:0;display:none}
 #vd{background:#000}
 #ph{position:absolute;left:0;right:0;top:45%;text-align:center;color:#888;font:14px sans-serif}</style></head>
-<body><div id="yt"></div><video id="vd" controls playsinline></video><div id="ph">Video nahi laga</div>
+<body><div id="yt"></div><video id="vd" controls playsinline></video><div id="ph">No video loaded</div>
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 var yp=null,ready=false,pending=null,applying=false,at=null,cur='',kind='',lastT=0,lastWall=Date.now();

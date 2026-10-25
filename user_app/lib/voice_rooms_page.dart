@@ -18,7 +18,7 @@ class VoiceRoomsPage extends StatelessWidget {
           controller: ctl,
           maxLength: 30,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Room ka naam'),
+          decoration: const InputDecoration(hintText: 'Room name'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
@@ -41,7 +41,7 @@ class VoiceRoomsPage extends StatelessWidget {
             MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: ref.key!)));
       }
     } catch (e) {
-      if (context.mounted) msg(context, 'Room nahi bana: $e');
+      if (context.mounted) msg(context, 'Could not create room: $e');
     }
   }
 
@@ -50,11 +50,11 @@ class VoiceRoomsPage extends StatelessWidget {
     final code = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Code se join'),
+        title: const Text('Join with code'),
         content: TextField(
           controller: ctl,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Room code paste karo'),
+          decoration: const InputDecoration(hintText: 'Paste room code'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
@@ -69,13 +69,13 @@ class VoiceRoomsPage extends StatelessWidget {
       final ok = (await rtdb.ref('voiceRooms/$code/meta').get()).exists;
       if (!context.mounted) return;
       if (!ok) {
-        msg(context, 'Room nahi mila');
+        msg(context, 'Room not found');
         return;
       }
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => VoiceRoomPage(roomId: code)));
     } catch (e) {
-      if (context.mounted) msg(context, 'Room nahi khula: $e');
+      if (context.mounted) msg(context, 'Could not open room: $e');
     }
   }
 
@@ -96,7 +96,7 @@ class VoiceRoomsPage extends StatelessWidget {
                     title: UserBuilder(
                       uid: '${e.value['from']}',
                       builder: (c, p) => Text(
-                          '${displayName(p)} ne "${e.value['name'] ?? 'room'}" me bulaya'),
+                          '${displayName(p)} invited you to "${e.value['name'] ?? 'room'}"'),
                     ),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       IconButton(
@@ -114,7 +114,7 @@ class VoiceRoomsPage extends StatelessWidget {
                               (await rtdb.ref('voiceRooms/$id/meta').get()).exists;
                           if (!c.mounted) return;
                           if (!ok) {
-                            msg(c, 'Ye room band ho chuka hai');
+                            msg(c, 'This room is already closed');
                             return;
                           }
                           Navigator.push(c,
@@ -135,7 +135,7 @@ class VoiceRoomsPage extends StatelessWidget {
           title: const Text('Voice Rooms'),
           actions: [
             IconButton(
-                tooltip: 'Code se join',
+                tooltip: 'Join with code',
                 onPressed: () => _joinByCode(context),
                 icon: const Icon(Icons.keyboard)),
           ],
@@ -143,7 +143,7 @@ class VoiceRoomsPage extends StatelessWidget {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _create(context),
           icon: const Icon(Icons.add),
-          label: const Text('Room banao'),
+          label: const Text('Create room'),
         ),
         body: Column(children: [
           _invites(context),
@@ -155,7 +155,7 @@ class VoiceRoomsPage extends StatelessWidget {
                   return Center(
                       child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text('Rooms load nahi hue: ${s.error}',
+                    child: Text('Could not load rooms: ${s.error}',
                         textAlign: TextAlign.center),
                   ));
                 }
@@ -176,7 +176,7 @@ class VoiceRoomsPage extends StatelessWidget {
                         .compareTo((a.value['meta']['createdAt'] ?? 0) as num));
                 if (rooms.isEmpty) {
                   return const Center(
-                      child: Text('Abhi koi room nahi. Pehla room banao!'));
+                      child: Text('No rooms yet. Create the first one!'));
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),

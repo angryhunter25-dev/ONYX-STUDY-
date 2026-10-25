@@ -66,7 +66,7 @@ class OnyxChatPage extends StatelessWidget {
               if (s.hasError) return Center(child: Text('Error: ${s.error}'));
               final v = s.data?.snapshot.value;
               if (v is! Map || v.isEmpty) {
-                return const Center(child: Text('Abhi koi message nahi'));
+                return const Center(child: Text('No messages yet'));
               }
               final list = v.entries.where((e) => e.value is Map).toList()
                 ..sort((a, b) => '${b.key}'.compareTo('${a.key}'));

@@ -96,7 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       await rtdb.ref('posts').push().set(
           {'uid': myUid, 'img': b, 'caption': cap, 'ts': ServerValue.timestamp});
-      if (mounted) msg(context, 'Post ho gaya');
+      if (mounted) msg(context, 'Posted');
     } catch (e) {
       if (mounted) msg(context, 'Error: $e');
     }
@@ -110,7 +110,7 @@ class _ProfilePageState extends State<ProfilePage> {
           .ref('stories/$myUid')
           .push()
           .set({'img': b, 'ts': ServerValue.timestamp});
-      if (mounted) msg(context, 'Story lag gayi (24 ghante tak dikhegi)');
+      if (mounted) msg(context, 'Story posted (visible for 24 hours)');
     } catch (e) {
       if (mounted) msg(context, 'Error: $e');
     }
@@ -122,7 +122,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (f == null || !mounted) return;
     final cap = await _askText('Caption (optional)');
     if (cap == null || !mounted) return;
-    msg(context, 'Reel upload ho rahi hai...');
+    msg(context, 'Uploading reel...');
     try {
       final ref = FirebaseStorage.instance
           .ref('reels/$myUid/${DateTime.now().millisecondsSinceEpoch}.mp4');
@@ -130,11 +130,11 @@ class _ProfilePageState extends State<ProfilePage> {
       final url = await ref.getDownloadURL();
       await rtdb.ref('reels').push().set(
           {'uid': myUid, 'url': url, 'caption': cap, 'ts': ServerValue.timestamp});
-      if (mounted) msg(context, 'Reel upload ho gayi');
+      if (mounted) msg(context, 'Reel uploaded');
     } catch (e) {
       if (mounted) {
         msg(context,
-            'Reel upload fail. Firebase Storage chalu karo. ($e)');
+            'Reel upload failed. Enable Firebase Storage. ($e)');
       }
     }
   }
@@ -309,7 +309,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (items.isEmpty)
         const Padding(
             padding: EdgeInsets.all(32),
-            child: Center(child: Text('Abhi kuch nahi')))
+            child: Center(child: Text('Nothing yet')))
       else
         GridView.count(
           crossAxisCount: 3,
@@ -384,7 +384,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: GestureDetector(
                   onTap: pick,
                   child: Avatar(p: {...widget.p, 'photo': photo}, r: 48))),
-          TextButton(onPressed: pick, child: const Text('Photo badlo')),
+          TextButton(onPressed: pick, child: const Text('Change photo')),
           const SizedBox(height: 8),
           TextField(
               controller: name,
@@ -451,7 +451,7 @@ class _StoryViewerState extends State<StoryViewer> {
               if (list.isEmpty)
                 const Padding(
                     padding: EdgeInsets.only(bottom: 24),
-                    child: Text('Abhi kisi ne nahi dekhi')),
+                    child: Text('No views yet')),
               Flexible(
                 child: ListView(shrinkWrap: true, children: [
                   for (final x in list)
@@ -649,7 +649,7 @@ class _ReelPlayerPageState extends State<ReelPlayerPage> {
         Expanded(
           child: Center(
             child: err != null
-                ? Text('Video nahi chali: $err')
+                ? Text('Video failed to play: $err')
                 : ready
                     ? GestureDetector(
                         onTap: () {

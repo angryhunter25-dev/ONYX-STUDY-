@@ -24,7 +24,7 @@ class _SettingsTabState extends State<SettingsTab> {
                   controller: t,
                   maxLines: 5,
                   decoration: const InputDecoration(
-                      hintText: 'Apna feedback likho...')),
+                      hintText: 'Write your feedback...')),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(d),
@@ -38,7 +38,7 @@ class _SettingsTabState extends State<SettingsTab> {
     try {
       await rtdb.ref('feedback').push().set(
           {'uid': myUid, 'text': text, 'ts': ServerValue.timestamp});
-      if (mounted) msg(context, 'Shukriya! Feedback mil gaya.');
+      if (mounted) msg(context, 'Thank you! Feedback received.');
     } catch (e) {
       if (mounted) msg(context, 'Error: $e');
     }
@@ -47,7 +47,7 @@ class _SettingsTabState extends State<SettingsTab> {
   Future<void> contact() async {
     final ok = await launchUrl(Uri.parse('https://instagram.com/onyx_xo9'),
         mode: LaunchMode.externalApplication);
-    if (!ok && mounted) msg(context, 'Instagram nahi khul paya');
+    if (!ok && mounted) msg(context, 'Could not open Instagram');
   }
 
   @override
@@ -69,7 +69,7 @@ class _SettingsTabState extends State<SettingsTab> {
         SwitchListTile(
           secondary: const Icon(Icons.notifications_outlined),
           title: const Text('Notifications'),
-          subtitle: const Text('Chat aur request alerts'),
+          subtitle: const Text('Chat and request alerts'),
           value: notificationsOn,
           onChanged: (v) {
             setState(() => notificationsOn = v);

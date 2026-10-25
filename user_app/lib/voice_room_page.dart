@@ -61,7 +61,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     final appId = await loadAgoraAppId();
     if (appId.isEmpty) {
       engineError =
-          'Agora App ID set nahi hai (Owner app > App update). Seats, chat aur video chalenge, awaaz nahi.';
+          'Voice is not set up yet. Seats, chat and screen work, but there is no audio.';
       if (mounted) setState(() {});
       return;
     }
@@ -90,7 +90,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
       engineReady = true;
       lastPublishing = false;
     } catch (e) {
-      engineError = 'Audio start nahi hua: $e';
+      engineError = 'Could not start audio: $e';
     }
     if (mounted) setState(() {});
   }
@@ -144,7 +144,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     if (engine != null) {
       final st = await Permission.microphone.request();
       if (!st.isGranted) {
-        if (mounted) msg(context, 'Mic permission do, tabhi seat pe bol paoge');
+        if (mounted) msg(context, 'Allow the microphone permission to speak on a seat');
         return;
       }
     }
@@ -162,7 +162,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
       return Transaction.success({'uid': myUid, 'selfMuted': false, 'hostMuted': false});
     });
     if (!res.committed) {
-      if (mounted) msg(context, 'Seat ${i + 1} abhi kisi ne le li');
+      if (mounted) msg(context, 'Seat ${i + 1} was just taken by someone else');
       return;
     }
     await ref.onDisconnect().remove();
@@ -178,11 +178,11 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Room band kare?'),
+        title: const Text('Close the room?'),
         content: const Text('Sab log bahar ho jayenge.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, band karo')),
+          ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, close it')),
         ],
       ),
     );
@@ -213,7 +213,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           if (mine) ...[
             ListTile(
               leading: Icon(seat!['selfMuted'] == true ? Icons.mic : Icons.mic_off),
-              title: Text(seat['selfMuted'] == true ? 'Mic on karo' : 'Mic mute karo'),
+              title: Text(seat['selfMuted'] == true ? 'Turn mic on' : 'Mute mic'),
               onTap: () {
                 Navigator.pop(c);
                 room.child('seats/$i/selfMuted').set(seat['selfMuted'] != true);
@@ -231,7 +231,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           if (occupant != null && !mine) ...[
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Profile dekho'),
+              title: const Text('View profile'),
               onTap: () {
                 Navigator.pop(c);
                 Navigator.push(context,
@@ -241,7 +241,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
             if (iAmHost) ...[
               ListTile(
                 leading: Icon(seat!['hostMuted'] == true ? Icons.mic : Icons.mic_off),
-                title: Text(seat['hostMuted'] == true ? 'Unmute karo' : 'Mute karo'),
+                title: Text(seat['hostMuted'] == true ? 'Unmute' : 'Mute'),
                 onTap: () {
                   Navigator.pop(c);
                   room.child('seats/$i/hostMuted').set(seat['hostMuted'] != true);
@@ -249,7 +249,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
               ),
               ListTile(
                 leading: const Icon(Icons.person_remove, color: Colors.redAccent),
-                title: const Text('Seat se hatao'),
+                title: const Text('Remove from seat'),
                 onTap: () {
                   Navigator.pop(c);
                   room.child('seats/$i').remove();
@@ -268,12 +268,12 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     final raw = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Saath me video dekho'),
+        title: const Text('Watch together'),
         content: TextField(
           controller: ctl,
           autofocus: true,
           decoration: const InputDecoration(
-              hintText: 'YouTube link ya video (.mp4) link paste karo'),
+              hintText: 'Paste a YouTube link or a video (.mp4) link'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
@@ -286,7 +286,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     if (raw == null || raw.isEmpty) return;
     final p = parseWatchLink(raw);
     if (p == null) {
-      if (mounted) msg(context, 'Ye link samajh nahi aaya. YouTube ya .mp4 link do.');
+      if (mounted) msg(context, 'This link is not supported. Use a YouTube or .mp4 link.');
       return;
     }
     await room.child('watch').set({
@@ -341,7 +341,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
         'ts': ServerValue.timestamp,
       });
     } catch (e) {
-      if (mounted) msg(context, 'Message nahi gaya: $e');
+      if (mounted) msg(context, 'Message not sent: $e');
     }
   }
 
@@ -359,7 +359,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
               ((b['ts'] ?? 0) as num).compareTo((a['ts'] ?? 0) as num));
           if (items.isEmpty) {
             return const Center(
-                child: Text('Abhi koi message nahi', style: TextStyle(fontSize: 12)));
+                child: Text('No messages yet', style: TextStyle(fontSize: 12)));
           }
           final cs = Theme.of(c).colorScheme;
           return ListView.builder(
@@ -411,9 +411,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
         'from': myUid,
         'ts': ServerValue.timestamp,
       });
-      if (mounted) msg(context, 'Invite bhej diya');
+      if (mounted) msg(context, 'Invite sent');
     } catch (e) {
-      if (mounted) msg(context, 'Invite nahi gaya: $e');
+      if (mounted) msg(context, 'Could not send invite: $e');
     }
   }
 
@@ -427,12 +427,12 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             ListTile(
               leading: const Icon(Icons.copy),
-              title: const Text('Room code copy karo'),
+              title: const Text('Copy room code'),
               subtitle: Text(widget.roomId),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: widget.roomId));
                 Navigator.pop(c);
-                msg(context, 'Code copy ho gaya. Dost Voice Rooms me "Code se join" kare.');
+                msg(context, 'Code copied. Your friend can use "Join with code" in Voice Rooms.');
               },
             ),
             const Divider(height: 1),
@@ -440,7 +440,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
               padding: EdgeInsets.all(12),
               child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Dost ko invite bhejo',
+                  child: Text('Invite a friend',
                       style: TextStyle(fontWeight: FontWeight.w700))),
             ),
             Flexible(
@@ -451,7 +451,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                   if (ids.isEmpty) {
                     return const Padding(
                         padding: EdgeInsets.all(20),
-                        child: Text('Abhi koi friend nahi. Add tab se friend jodo.'));
+                        child: Text('No friends yet. Add friends from the Add tab.'));
                   }
                   return ListView(shrinkWrap: true, children: [
                     for (final id in ids)
@@ -491,7 +491,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted && Navigator.canPop(context)) {
                 Navigator.pop(context);
-                msg(context, 'Room band ho gaya');
+                msg(context, 'Room closed');
               }
             });
             return const Scaffold(body: SizedBox.shrink());
@@ -538,7 +538,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                     icon: const Icon(Icons.person_add_alt_1)),
                 if (iAmHost)
                   IconButton(
-                      tooltip: 'Room band karo',
+                      tooltip: 'Close room',
                       onPressed: _closeRoom,
                       icon: const Icon(Icons.power_settings_new)),
               ],
@@ -592,7 +592,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                         TextButton.icon(
                           onPressed: _setLink,
                           icon: const Icon(Icons.ondemand_video),
-                          label: Text(hasVideo ? 'Link badlo' : 'Video link'),
+                          label: Text(hasVideo ? 'Change link' : 'Video link'),
                         ),
                         if (hasVideo || isWeb)
                           TextButton.icon(
@@ -648,7 +648,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => _sendChat(),
                           decoration: const InputDecoration(
-                            hintText: 'Message likho...',
+                            hintText: 'Type a message...',
                             isDense: true,
                             border: OutlineInputBorder(),
                           ),

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -129,7 +131,7 @@ class _SharedBrowserState extends State<SharedBrowser> {
                   onSubmitted: _go,
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Google / YouTube search ya link',
+                    hintText: 'Search Google / YouTube or enter a link',
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
@@ -157,14 +159,19 @@ class _SharedBrowserState extends State<SharedBrowser> {
               _chip('YouTube', () => _go('https://m.youtube.com')),
               const SizedBox(width: 8),
               Row(children: [
-                const Text('Sab ke saath sync', style: TextStyle(fontSize: 12)),
+                const Text('Sync with everyone', style: TextStyle(fontSize: 12)),
                 Switch(value: sync, onChanged: (v) => setState(() => sync = v)),
               ]),
             ],
           ),
         ),
         if (progress < 100) LinearProgressIndicator(value: progress / 100, minHeight: 2),
-        Expanded(child: WebViewWidget(controller: _c)),
+        Expanded(child: WebViewWidget(
+          controller: _c,
+          gestureRecognizers: {
+            Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
+          },
+        )),
       ]),
     );
   }

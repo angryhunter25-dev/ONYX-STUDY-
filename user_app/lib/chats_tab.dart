@@ -60,7 +60,7 @@ class ChatsTab extends StatelessWidget {
                   const Padding(
                       padding: EdgeInsets.all(24),
                       child: Text(
-                          'Abhi koi chat nahi.\nAdd tab se dost jodo, phir unse baat shuru karo.',
+                          'No chats yet.\nAdd friends from the Add tab, then start chatting.',
                           textAlign: TextAlign.center)),
               ],
             );
@@ -167,7 +167,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       await rtdb.ref().update(ups);
     } catch (e) {
-      if (mounted) msg(context, 'Send nahi hua: $e');
+      if (mounted) msg(context, 'Could not send: $e');
     }
   }
 
@@ -232,7 +232,7 @@ class _ChatPageState extends State<ChatPage> {
                 if (s.hasError) return Center(child: Text('Error: ${s.error}'));
                 final v = s.data?.snapshot.value;
                 if (v is! Map || v.isEmpty) {
-                  return const Center(child: Text('Pehla message bhejo'));
+                  return const Center(child: Text('Send the first message'));
                 }
                 final list = v.entries.where((e) => e.value is Map).toList()
                   ..sort((a, b) => '${b.key}'.compareTo('${a.key}'));
@@ -285,8 +285,8 @@ class _NewGroupPageState extends State<NewGroupPage> {
 
   Future<void> create() async {
     final n = name.text.trim();
-    if (n.isEmpty) return msg(context, 'Group ka naam likho');
-    if (sel.isEmpty) return msg(context, 'Kam se kam ek dost chuno');
+    if (n.isEmpty) return msg(context, 'Enter a group name');
+    if (sel.isEmpty) return msg(context, 'Select at least one friend');
     setState(() => busy = true);
     try {
       final me = myUid;
@@ -331,7 +331,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
               alignment: Alignment.centerLeft,
               child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 14),
-                  child: Text('Dost chuno'))),
+                  child: Text('Select friends'))),
           Expanded(
             child: StreamBuilder<DatabaseEvent>(
               stream: rtdb.ref('friends/$myUid').onValue,
@@ -339,7 +339,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
                 final ids = keysOf(s.data);
                 if (ids.isEmpty) {
                   return const Center(
-                      child: Text('Pehle Add tab se dost jodo'));
+                      child: Text('Add friends from the Add tab first'));
                 }
                 return ListView(children: [
                   for (final f in ids)

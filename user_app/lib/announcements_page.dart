@@ -63,7 +63,7 @@ class AnnouncementsPage extends StatelessWidget {
             list.sort((a, b) => ((b['ts'] as num?) ?? 0)
                 .compareTo((a['ts'] as num?) ?? 0));
             if (list.isEmpty) {
-              return const Center(child: Text('Abhi koi announcement nahi'));
+              return const Center(child: Text('No announcements yet'));
             }
             return ListView.builder(
               padding: const EdgeInsets.all(12),

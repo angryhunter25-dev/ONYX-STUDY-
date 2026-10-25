@@ -49,7 +49,7 @@ class _AddTabState extends State<AddTab> {
     try {
       final r = await _resolve(q.text);
       found = r;
-      if (r == null) err = 'Is naam, number ya email se koi user nahi mila';
+      if (r == null) err = 'No user found with this name, number or email';
     } catch (e) {
       err = 'Error: $e';
     }
@@ -109,7 +109,7 @@ class _AddTabState extends State<AddTab> {
               if (ids.isEmpty) {
                 return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text('Koi request nahi'));
+                    child: Text('No requests'));
               }
               return Column(children: [
                 for (final id in ids)
@@ -144,7 +144,7 @@ class _AddTabState extends State<AddTab> {
               if (ids.isEmpty) {
                 return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text('Abhi koi dost nahi'));
+                    child: Text('No friends yet'));
               }
               return Column(children: [
                 for (final id in ids)

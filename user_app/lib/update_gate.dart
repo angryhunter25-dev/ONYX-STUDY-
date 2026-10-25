@@ -85,7 +85,7 @@ class _UpdateScreen extends StatelessWidget {
   }
 
   void _err(BuildContext context) => ScaffoldMessenger.of(context)
-      .showSnackBar(const SnackBar(content: Text('Link nahi khul paaya')));
+      .showSnackBar(const SnackBar(content: Text('Could not open the link')));
 
   @override
   Widget build(BuildContext context) {
@@ -102,13 +102,13 @@ class _UpdateScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.system_update, size: 64, color: cs.primary),
                   const SizedBox(height: 16),
-                  Text(force ? 'Update required' : 'Naya update aaya hai',
+                  Text(force ? 'Update required' : 'A new update is available',
                       style: const TextStyle(
                           fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   Text(
                       'Installed: $installed  →  New build: $latest\n'
-                      'APK download karke install karo, phir app khulega.',
+                      'Download and install the APK, then the app will open.',
                       textAlign: TextAlign.center),
                   if (notes.isNotEmpty) ...[
                     const SizedBox(height: 14),
