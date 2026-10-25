@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +7,24 @@ import 'common.dart';
 import 'voice_room_page.dart';
 
 /// List of all live voice rooms + create / join by code + invites.
+final Set<String> _pendingCleanup = {};
+
+/// A room with no host/admin online is removed from the server after a short grace period.
+void _scheduleCleanup(String id) {
+  if (!_pendingCleanup.add(id)) return;
+  Timer(const Duration(seconds: 15), () async {
+    try {
+      final h = await rtdb.ref('voiceRooms/$id/hosts').get();
+      final st = await rtdb.ref('voiceRooms/$id/seats').get();
+      if (!h.exists && !st.exists) {
+        await rtdb.ref('voiceChat/$id').remove();
+        await rtdb.ref('voiceRooms/$id').remove();
+      }
+    } catch (_) {}
+    _pendingCleanup.remove(id);
+  });
+}
+
 class VoiceRoomsPage extends StatelessWidget {
   const VoiceRoomsPage({super.key});
 
@@ -24,17 +44,20 @@ class VoiceRoomsPage extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
           ElevatedButton(
               onPressed: () => Navigator.pop(c, ctl.text.trim()),
-              child: const Text('Banao')),
+              child: const Text('Create')),
         ],
       ),
     );
     if (name == null || name.isEmpty) return;
     final ref = rtdb.ref('voiceRooms').push();
     try {
-      await ref.child('meta').set({
-        'name': name,
-        'owner': myUid,
-        'createdAt': ServerValue.timestamp,
+      await ref.set({
+        'meta': {
+          'name': name,
+          'owner': myUid,
+          'createdAt': ServerValue.timestamp,
+        },
+        'hosts': {myUid: true},
       });
       if (context.mounted) {
         Navigator.push(context,
@@ -167,7 +190,12 @@ class VoiceRoomsPage extends StatelessWidget {
                 if (v is Map) {
                   v.forEach((k, r) {
                     if (r is Map && r['meta'] is Map) {
-                      rooms.add(MapEntry('$k', r));
+                      final live = r['hosts'] is Map && (r['hosts'] as Map).isNotEmpty;
+                      if (live) {
+                        rooms.add(MapEntry('$k', r));
+                      } else {
+                        _scheduleCleanup('$k');
+                      }
                     }
                   });
                 }

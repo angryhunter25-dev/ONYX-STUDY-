@@ -32,6 +32,11 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
   bool left = false;
   num serverOffset = 0;
   Map? _watch;
+  bool _hostReg = false;
+  bool _isOwner = false;
+  Map _admins = const {};
+  Timer? _noHostTimer;
+  StreamSubscription<DatabaseEvent>? _connSub;
 
   @override
   void initState() {
@@ -54,6 +59,53 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     try {
       await m.onDisconnect().remove();
       await m.set(true);
+    } catch (_) {}
+  }
+
+  /// Hosts (owner and admins) keep the room alive while they are online.
+  Future<void> _registerHost() async {
+    if (_hostReg) return;
+    _hostReg = true;
+    final h = room.child('hosts/$myUid');
+    try {
+      await h.onDisconnect().remove();
+      await h.set(true);
+    } catch (_) {}
+    _connSub ??= rtdb.ref('.info/connected').onValue.listen((e) async {
+      if (e.snapshot.value == true && _hostReg && !left) {
+        try {
+          await h.onDisconnect().remove();
+          await h.set(true);
+        } catch (_) {}
+      }
+    });
+  }
+
+  Future<void> _claimOwner() async {
+    _noHostTimer = null;
+    try {
+      final h = await room.child('hosts').get();
+      if (h.exists || left) return;
+      await room.child('meta/owner').set(myUid);
+    } catch (_) {}
+  }
+
+  Future<void> _unregisterHost() async {
+    if (!_hostReg) return;
+    _hostReg = false;
+    final h = room.child('hosts/$myUid');
+    try {
+      await h.onDisconnect().cancel();
+      await h.remove();
+      final rest = await room.child('hosts').get();
+      if (!rest.exists) {
+        // someone is still sitting: they take over as owner, so keep the room
+        final st = await room.child('seats').get();
+        if (!st.exists) {
+          await chatRef.remove();
+          await room.remove();
+        }
+      }
     } catch (_) {}
   }
 
@@ -126,6 +178,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
       await m.onDisconnect().cancel();
       await m.remove();
     } catch (_) {}
+    _noHostTimer?.cancel();
+    _connSub?.cancel();
+    await _unregisterHost();
     try {
       await engine?.leaveChannel();
       await engine?.release();
@@ -179,9 +234,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Close the room?'),
-        content: const Text('Sab log bahar ho jayenge.'),
+        content: const Text('Everyone will be removed from the room.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
           ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, close it')),
         ],
       ),
@@ -204,7 +259,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           if (occupant == null)
             ListTile(
               leading: const Icon(Icons.event_seat),
-              title: Text('Seat ${i + 1} pe baitho'),
+              title: Text('Sit on seat ${i + 1}'),
               onTap: () {
                 Navigator.pop(c);
                 _sit(i, seats);
@@ -221,7 +276,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
             ),
             ListTile(
               leading: const Icon(Icons.exit_to_app),
-              title: const Text('Seat chhodo'),
+              title: const Text('Leave seat'),
               onTap: () {
                 Navigator.pop(c);
                 _standUp(i);
@@ -247,6 +302,16 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                   room.child('seats/$i/hostMuted').set(seat['hostMuted'] != true);
                 },
               ),
+              if (_isOwner)
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings),
+                  title: Text(_admins[occupant] == true ? 'Remove admin' : 'Make admin'),
+                  onTap: () {
+                    Navigator.pop(c);
+                    room.child('admins/$occupant')
+                        .set(_admins[occupant] == true ? null : true);
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.person_remove, color: Colors.redAccent),
                 title: const Text('Remove from seat'),
@@ -508,7 +573,34 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           }
           final seatsAny = {for (final e in seats.entries) e.key: e.value};
           final online = v['members'] is Map ? (v['members'] as Map).length : 0;
-          final iAmHost = meta['owner'] == myUid;
+          _isOwner = meta['owner'] == myUid;
+          final admins = v['admins'] is Map ? v['admins'] as Map : const {};
+          _admins = admins;
+          final iAmHost = _isOwner || admins[myUid] == true;
+          final hosts = v['hosts'] is Map ? v['hosts'] as Map : const {};
+          if (iAmHost) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => _registerHost());
+            _noHostTimer?.cancel();
+          } else if (hosts.isEmpty) {
+            // No owner/admin is online: the person on the lowest-numbered seat becomes owner.
+            final order = seats.keys.toList()..sort();
+            final rank = order.indexWhere((k) => seats[k]!['uid'] == myUid);
+            if (rank >= 0) {
+              _noHostTimer ??=
+                  Timer(Duration(milliseconds: 600 + rank * 1500), _claimOwner);
+            } else {
+              _noHostTimer ??= Timer(Duration(seconds: order.isEmpty ? 10 : 25), () {
+                _noHostTimer = null;
+                if (mounted && Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                  msg(context, 'Room closed because the host left');
+                }
+              });
+            }
+          } else {
+            _noHostTimer?.cancel();
+            _noHostTimer = null;
+          }
           final watch = v['watch'] is Map ? v['watch'] as Map : null;
           _watch = watch;
           final isWeb = watch != null && watch['k'] == 'web';
@@ -536,7 +628,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                     tooltip: 'Invite',
                     onPressed: () => _invite('${meta['name']}'),
                     icon: const Icon(Icons.person_add_alt_1)),
-                if (iAmHost)
+                if (_isOwner)
                   IconButton(
                       tooltip: 'Close room',
                       onPressed: _closeRoom,
