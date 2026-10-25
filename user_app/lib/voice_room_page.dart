@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -12,6 +13,7 @@ import 'voice_config.dart';
 import 'room_session.dart';
 import 'shared_browser.dart';
 import 'watch_player.dart';
+import 'voice_extras.dart';
 
 /// Realtime voice room: 8 seats, voice (Agora), watch together (YouTube / video
 /// link, synced), room chat and invites. Everything syncs live via Firebase.
@@ -25,7 +27,15 @@ class VoiceRoomPage extends StatefulWidget {
 class _VoiceRoomPageState extends State<VoiceRoomPage> {
   late final DatabaseReference room = rtdb.ref('voiceRooms/${widget.roomId}');
   late final DatabaseReference chatRef = rtdb.ref('voiceChat/${widget.roomId}');
+  late final DatabaseReference giftsRef = rtdb.ref('voiceGifts/${widget.roomId}');
   final chatCtl = TextEditingController();
+  final ValueNotifier<Set<int>> _speaking = ValueNotifier<Set<int>>(<int>{});
+  late final int _myAu = agoraUidOf(myUid);
+  final List<_Fx> _fx = [];
+  final Set<String> _seenGifts = {};
+  int _fxSeq = 0;
+  DateTime? _lastGift;
+  StreamSubscription<DatabaseEvent>? _giftSub;
   RtcEngine? engine;
   bool engineReady = false;
   String? engineError;
@@ -45,6 +55,10 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     _joinPresence();
     _initAudio();
     _loadOffset();
+    _giftSub = giftsRef
+        .limitToLast(1)
+        .onChildAdded
+        .listen(_onGift, onError: (_) {});
   }
 
   Future<void> _loadOffset() async {
@@ -104,6 +118,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
         final st = await room.child('seats').get();
         if (!st.exists) {
           await chatRef.remove();
+          try {
+            await giftsRef.remove();
+          } catch (_) {}
           await room.remove();
         }
       }
@@ -125,6 +142,21 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
         channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
       ));
       await e.enableAudio();
+      e.registerEventHandler(RtcEngineEventHandler(
+        onAudioVolumeIndication: (RtcConnection conn,
+            List<AudioVolumeInfo> speakers, int speakerNumber, int totalVolume) {
+          final now = <int>{};
+          for (final sp in speakers) {
+            if ((sp.volume ?? 0) > 12) {
+              final u = sp.uid ?? 0;
+              now.add(u == 0 ? _myAu : u);
+            }
+          }
+          if (!setEquals(now, _speaking.value)) _speaking.value = now;
+        },
+      ));
+      await e.enableAudioVolumeIndication(
+          interval: 250, smooth: 3, reportVad: true);
       await e.setAudioProfile(
         profile: AudioProfileType.audioProfileDefault,
         scenario: AudioScenarioType.audioScenarioGameStreaming,
@@ -132,7 +164,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
       await e.joinChannel(
         token: '',
         channelId: widget.roomId,
-        uid: 0,
+        uid: _myAu,
         options: const ChannelMediaOptions(
           clientRoleType: ClientRoleType.clientRoleAudience,
           publishMicrophoneTrack: false,
@@ -191,6 +223,8 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
   @override
   void dispose() {
     chatCtl.dispose();
+    _giftSub?.cancel();
+    _speaking.dispose();
     _leaveAll();
     super.dispose();
   }
@@ -245,6 +279,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
     if (ok == true) {
       try {
         await chatRef.remove();
+          try {
+            await giftsRef.remove();
+          } catch (_) {}
       } catch (_) {}
       await room.remove();
     }
@@ -469,6 +506,68 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
         },
       );
 
+  // ---------- gifts ----------
+  void _onGift(DatabaseEvent e) {
+    final key = e.snapshot.key;
+    final v = e.snapshot.value;
+    if (key == null || v is! Map || !_seenGifts.add(key)) return;
+    final ts = v['ts'];
+    final now = DateTime.now().millisecondsSinceEpoch + serverOffset;
+    if (ts is num && now - ts > 6000) return; // old gift, not live
+    final g = giftById('${v['g']}');
+    if (g == null || !mounted) return;
+    final qty = (v['n'] is num) ? (v['n'] as num).toInt().clamp(1, 99).toInt() : 1;
+    setState(() {
+      if (_fx.length >= 4) _fx.removeAt(0);
+      _fx.add(_Fx(++_fxSeq, '${v['from']}', '${v['to']}', g.emoji, qty));
+    });
+  }
+
+  Future<void> _sendGift(String to, Gift g, int qty) async {
+    final last = _lastGift;
+    if (last != null &&
+        DateTime.now().difference(last) < const Duration(milliseconds: 700)) {
+      return;
+    }
+    _lastGift = DateTime.now();
+    try {
+      await giftsRef.push().set({
+        'from': myUid,
+        'to': to,
+        'g': g.id,
+        'n': qty,
+        'ts': ServerValue.timestamp,
+      });
+    } catch (e) {
+      if (mounted) msg(context, 'Gift not sent: $e');
+      return;
+    }
+    try {
+      await room.child('charm/$to').runTransaction((cur) {
+        final n = (cur is num ? cur.toInt() : 0) + g.value * qty;
+        return Transaction.success(n);
+      });
+    } catch (_) {}
+  }
+
+  void _openGifts(Map<int, Map> seats, Map meta) {
+    final targets = <String>[];
+    final order = seats.keys.toList()..sort();
+    for (final k in order) {
+      final u = seats[k]!['uid'];
+      if (u is String && u != myUid && !targets.contains(u)) targets.add(u);
+    }
+    final owner = meta['owner'];
+    if (owner is String && owner != myUid && !targets.contains(owner)) {
+      targets.insert(0, owner);
+    }
+    if (targets.isEmpty) {
+      msg(context, 'Nobody to send a gift to yet');
+      return;
+    }
+    showGiftSheet(context, targets: targets, onSend: _sendGift);
+  }
+
   // ---------- invite ----------
   Future<void> _sendInvite(String friendUid, String roomName) async {
     try {
@@ -601,6 +700,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
             _noHostTimer?.cancel();
             _noHostTimer = null;
           }
+          final charm = v['charm'] is Map ? v['charm'] as Map : const {};
           final watch = v['watch'] is Map ? v['watch'] as Map : null;
           _watch = watch;
           final isWeb = watch != null && watch['k'] == 'web';
@@ -643,24 +743,37 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                       icon: const Icon(Icons.power_settings_new)),
               ],
             ),
-            body: LayoutBuilder(
+            body: Stack(children: [
+            LayoutBuilder(
               builder: (c, box) => Column(children: [
                 ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: box.maxHeight * .64),
                   child: SingleChildScrollView(
                     child: Column(children: [
                       // live top bar
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        color: cs.primaryContainer,
-                        child: Row(children: [
-                          const Icon(Icons.circle, size: 10, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Text(
-                              'LIVE  •  $online online  •  ${seats.length}/$voiceSeatCount seats',
-                              style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ]),
+                      InkWell(
+                        onTap: () => showMembersSheet(context, room),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                                colors: [onyxGlow.withOpacity(.35), cs.primaryContainer]),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.circle, size: 10, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                  'LIVE  •  $online online  •  ${seats.length}/$voiceSeatCount seats',
+                                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                            const Icon(Icons.groups, size: 20),
+                            const SizedBox(width: 4),
+                            const Text('Members',
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                          ]),
+                        ),
                       ),
                       if (engineError != null)
                         Container(
@@ -721,6 +834,8 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                               index: i,
                               seat: seats[i],
                               isHostSeat: seats[i]?['uid'] == meta['owner'],
+                              speaking: _speaking,
+                              charm: (charm[seats[i]?['uid']] as num?)?.toInt() ?? 0,
                               onTap: () => _seatMenu(i, seats[i], seatsAny, iAmHost),
                             ),
                         ],
@@ -747,6 +862,11 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                               canSpeak ? Icons.mic : Icons.mic_off,
                               color: canSpeak ? Colors.green : Colors.redAccent),
                         ),
+                      IconButton(
+                        tooltip: 'Send gift',
+                        onPressed: () => _openGifts(seatsAny.map((k, val) => MapEntry(k, val)), meta),
+                        icon: const Icon(Icons.card_giftcard, color: onyxGlow),
+                      ),
                       Expanded(
                         child: TextField(
                           controller: chatCtl,
@@ -765,6 +885,20 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                 ),
               ]),
             ),
+            for (final f in _fx)
+              Positioned.fill(
+                child: GiftBurst(
+                  key: ValueKey('fx${f.id}'),
+                  fromUid: f.from,
+                  toUid: f.to,
+                  emoji: f.emoji,
+                  qty: f.qty,
+                  onDone: () {
+                    if (mounted) setState(() => _fx.removeWhere((x) => x.id == f.id));
+                  },
+                ),
+              ),
+            ]),
           );
         },
       ),
@@ -772,39 +906,61 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
   }
 }
 
+class _Fx {
+  final int id;
+  final String from;
+  final String to;
+  final String emoji;
+  final int qty;
+  _Fx(this.id, this.from, this.to, this.emoji, this.qty);
+}
+
 class _SeatTile extends StatelessWidget {
   final int index;
   final Map? seat;
   final bool isHostSeat;
   final VoidCallback onTap;
+  final ValueNotifier<Set<int>> speaking;
+  final int charm;
   const _SeatTile(
       {required this.index,
       required this.seat,
       required this.isHostSeat,
-      required this.onTap});
+      required this.onTap,
+      required this.speaking,
+      required this.charm});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final uid = seat?['uid'] as String?;
     final muted = seat != null && (seat!['selfMuted'] == true || seat!['hostMuted'] == true);
+    final Widget avatar = uid == null
+        ? CircleAvatar(
+            radius: 24,
+            backgroundColor: cs.surfaceContainerHighest,
+            child: Icon(Icons.add, color: cs.onSurfaceVariant),
+          )
+        : UserBuilder(uid: uid, builder: (c, p) => Avatar(p: p, r: 24));
+    final int? au = uid == null ? null : agoraUidOf(uid);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Column(children: [
         Stack(clipBehavior: Clip.none, children: [
-          if (uid == null)
-            CircleAvatar(
+          ValueListenableBuilder<Set<int>>(
+            valueListenable: speaking,
+            child: avatar,
+            builder: (c, set, child) => SpeakingRing(
+              active: au != null && !muted && set.contains(au),
               radius: 24,
-              backgroundColor: cs.surfaceContainerHighest,
-              child: Icon(Icons.add, color: cs.onSurfaceVariant),
-            )
-          else
-            UserBuilder(uid: uid, builder: (c, p) => Avatar(p: p, r: 24)),
+              child: child!,
+            ),
+          ),
           if (uid != null && muted)
             const Positioned(
-              right: -2,
-              bottom: -2,
+              right: 0,
+              bottom: 0,
               child: CircleAvatar(
                   radius: 9,
                   backgroundColor: Colors.redAccent,
@@ -812,9 +968,21 @@ class _SeatTile extends StatelessWidget {
             ),
           if (isHostSeat)
             const Positioned(
-              left: -2,
+              left: 0,
               top: -4,
               child: Icon(Icons.workspace_premium, size: 16, color: Colors.amber),
+            ),
+          if (uid != null && charm > 0)
+            Positioned(
+              left: -4,
+              bottom: -3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                    color: onyxGlow, borderRadius: BorderRadius.circular(8)),
+                child: Text('🎁 $charm',
+                    style: const TextStyle(fontSize: 8, color: Colors.white)),
+              ),
             ),
         ]),
         const SizedBox(height: 4),

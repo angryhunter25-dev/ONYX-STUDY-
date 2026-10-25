@@ -18,6 +18,9 @@ void _scheduleCleanup(String id) {
       final h = await rtdb.ref('voiceRooms/$id/hosts').get();
       final st = await rtdb.ref('voiceRooms/$id/seats').get();
       if (!h.exists && !st.exists) {
+        try {
+          await rtdb.ref('voiceGifts/$id').remove();
+        } catch (_) {}
         await rtdb.ref('voiceChat/$id').remove();
         await rtdb.ref('voiceRooms/$id').remove();
       }
