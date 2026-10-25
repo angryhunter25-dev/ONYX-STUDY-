@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'common.dart';
 import 'profile_tab.dart';
 import 'voice_config.dart';
+import 'shared_browser.dart';
 import 'watch_player.dart';
 
 /// Realtime voice room: 8 seats, voice (Agora), watch together (YouTube / video
@@ -302,7 +303,7 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
 
   void _onWatchEvent(Map<String, dynamic> e) {
     final w = _watch;
-    if (w == null || w['src'] == null) return;
+    if (w == null || w['src'] == null || w['k'] == 'web') return;
     final t = (e['t'] as num?)?.toDouble() ?? 0;
     var playing = w['playing'] == true;
     switch (e['e']) {
@@ -510,7 +511,8 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
           final iAmHost = meta['owner'] == myUid;
           final watch = v['watch'] is Map ? v['watch'] as Map : null;
           _watch = watch;
-          final hasVideo = watch != null && watch['src'] != null;
+          final isWeb = watch != null && watch['k'] == 'web';
+          final hasVideo = watch != null && watch['src'] != null && !isWeb;
 
           Map? mySeat;
           int? mySeatIdx;
@@ -567,6 +569,12 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                           padding: const EdgeInsets.all(8),
                           child: Text(engineError!, style: const TextStyle(fontSize: 12)),
                         ),
+                      // shared screen (browser)
+                      SharedBrowser(
+                        key: const ValueKey('sb'),
+                        watchRef: room.child('watch'),
+                        myUid: myUid,
+                      ),
                       // watch together
                       if (hasVideo)
                         AspectRatio(
@@ -584,9 +592,9 @@ class _VoiceRoomPageState extends State<VoiceRoomPage> {
                         TextButton.icon(
                           onPressed: _setLink,
                           icon: const Icon(Icons.ondemand_video),
-                          label: Text(hasVideo ? 'Video badlo' : 'Saath me video dekho'),
+                          label: Text(hasVideo ? 'Link badlo' : 'Video link'),
                         ),
-                        if (hasVideo)
+                        if (hasVideo || isWeb)
                           TextButton.icon(
                             onPressed: _clearWatch,
                             icon: const Icon(Icons.close),
